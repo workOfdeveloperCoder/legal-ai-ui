@@ -1,20 +1,17 @@
-import {
-    MessageSquareText,
-    ArrowRight,
-    Clock3,
-    Scale,
-    FileText
-} from "lucide-react";
+import { MessageSquareText, ArrowRight, Clock3, Scale, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function MatterConversationCard({
     conversation,
     setActivePage,
 }) {
 
+    const navigate = useNavigate()
+
     return (
 
         <div
-            onClick={() => setActivePage(`/conversation/${conversation.id}`)}
+            onClick={() => {navigate(`/conversation/${conversation.id}`);onClose?.();}}
             className="
                 group
                 rounded-xl

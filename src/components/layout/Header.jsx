@@ -1,8 +1,16 @@
-import { Sparkles, ChevronDown, Bell, Search } from "lucide-react";
+import { Sparkles, ChevronDown, Bell, Search, Menu } from "lucide-react";
 
-export default function Header() {
+
+export default function Header({ onMenuClick }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-background/80 px-8 backdrop-blur-xl">
+
+    <button
+        onClick={onMenuClick}
+        className="min-[1000px]:hidden rounded-xl p-2 hover:bg-slate-100"
+    >
+        <Menu size={22} />
+    </button>
 
       {/* Left */}
       <div className="flex items-center gap-4">

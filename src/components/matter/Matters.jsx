@@ -42,13 +42,36 @@ export default function Matters({setActivePage }) {
         <div className="flex h-full flex-col bg-background">
 
             {/* Header */}
-            <SubHeader title="Matters" description=" Organize legal conversations into matters."/>
+            <SubHeader title="Matters" description=" Organize legal conversations into matters." 
+            
+                action={
+                    <motion.button
+                        whileHover={{
+                            scale: 1.03,
+                            y: -1,
+                        }}
+                        whileTap={{
+                            scale: 0.96,
+                        }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 25,
+                        }}
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 rounded-xl bg-yellow px-5 py-3 text-sm font-medium text-gray hover:bg-yellow-600"
+                    >
+                        <Plus size={18} />
+                        New Matter
+                    </motion.button>
+                }
+            />
 
             {/* Cards */}
 
             <div className="flex-1 overflow-y-auto">
 
-                <div className="mx-auto grid max-w-7xl grid-cols-3 gap-6 p-8">
+                <div className="mx-auto block min-[1300px]:grid max-w-7xl grid-cols-3 gap-6 p-8">
 
                     {loading &&
                         [...Array(6)].map((_, i) => (
@@ -79,12 +102,9 @@ export default function Matters({setActivePage }) {
                                     delay: index * .02,
                                     duration: .3
                                 }}
+                                className="max-[1300px]:pb-5"
                             >
-                                <MatterCard
-                                    key={matter.id}
-                                    matter={matter}
-                                    setActivePage={setActivePage}
-                                />
+                                <MatterCard matter={matter} />
                             </motion.div>
                         ))}
 

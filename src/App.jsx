@@ -1,21 +1,31 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion} from 'framer-motion';
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
 import ChatArea from "./components/chat/ChatArea";
-import Matters from "./components/pages/Matters";
-import MatterDetail from "./components/pages/MatterDetails";
-import { AnimatePresence, motion} from 'framer-motion';
+import Matters from "./components/matter/Matters";
+import MatterDetail from "./components/matter/MatterDetails";
+import Dashboard from "./components/dashboard/Dashboard";
 
 import { chatService } from "./services/chatService";
 
+import AppRoutes from './routes/AppRoutes'
+
 export default function App() {
 
-    const [activePage, setActivePage] = useState("chat");
+    const navigate = useNavigate();
+
+    const location = useLocation();
+
+    const [activePage, setActivePage] = useState("dashboard");
 
     const [conversations, setConversations] = useState([]);
 
     const [selectedConversationId, setSelectedConversationId] = useState(null);
+
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         loadSidebar();
@@ -28,13 +38,7 @@ export default function App() {
         setConversations(data);
 
         if (data.length) {
-            
             setConversations(data);
-
-            setSelectedConversationId(data[0].id);
-
-            setActivePage(`/conversation/${data[0].id}`);
-
         }
 
     }
@@ -44,65 +48,21 @@ export default function App() {
         <div className="flex h-screen w-screen overflow-hidden bg-background">
 
             <Sidebar
-                activePage={activePage}
-                setActivePage={setActivePage}
                 conversations={conversations}
-                selectedConversationId={selectedConversationId}
                 onSelect={setSelectedConversationId}
+                isOpen={sidebarOpen}
+                onClose={() => setSidebarOpen(false)}
             />
 
             <main className="flex flex-1 flex-col overflow-hidden">
 
-                <Header />
 
-                <div className="flex-1 overflow-hidden relative">
+                <Header
+                    onMenuClick={() => setSidebarOpen(true)}
+                />
 
-                    <AnimatePresence mode="wait">
-
-                       <motion.div
-                            key={activePage}
-                            className="h-full"
-                            initial={{
-                                opacity: 0,
-                                x: 12,
-                            }}
-                            animate={{
-                                opacity: 1,
-                                x: 0,
-                            }}
-                            exit={{
-                                opacity: 0,
-                                x: -12,
-                            }}
-                            transition={{
-                                duration: 0.08,
-                                ease: "easeOut",
-                            }}
-                        >
-
-                            {activePage === "/matters" && (
-                                <Matters
-                                    setActivePage={setActivePage}
-                                />
-                            )}
-
-                            {activePage.startsWith("/matter/") && (
-                                <MatterDetail
-                                    matterId={activePage.split("/").pop()}
-                                    setActivePage={setActivePage}
-                                />
-                            )}
-
-                            {activePage.startsWith("/conversation/") && (
-                                <ChatArea
-                                    conversationId={selectedConversationId}
-                                />
-                            )}
-
-                        </motion.div>
-
-                    </AnimatePresence>
-
+                <div className="flex-1 overflow-y-auto min-[1500px]:overflow-hidden min-[1500px]:min-h-0">
+                    <AppRoutes />
                 </div>
 
             </main>

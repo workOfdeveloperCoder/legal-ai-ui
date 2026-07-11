@@ -62,22 +62,6 @@ export default function PromptBar({
               <Paperclip size={18} />
             </button>
 
-            <button className="flex h-10 items-center gap-2 rounded-xl px-3 transition hover:bg-slate-100">
-              <Globe size={17} />
-
-              <span className="text-sm font-medium">
-                Search
-              </span>
-            </button>
-
-            <button className="flex h-10 items-center gap-2 rounded-xl px-3 transition hover:bg-slate-100">
-              <Sparkles size={17} />
-
-              <span className="text-sm font-medium">
-                Deep Research
-              </span>
-            </button>
-
           </div>
 
           {/* Right */}

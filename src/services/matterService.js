@@ -73,7 +73,7 @@ export const matterService = {
 
     async updateMatter(id, payload) {
 
-        const response = await fetch(`${API}/matters/${id}`, {
+        const response = await fetch(`${API}/matter/${id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json"
@@ -86,11 +86,45 @@ export const matterService = {
 
     async deleteMatter(id) {
 
-        await fetch(`${API}/matters/${id}`, {
+        await fetch(`${API}/matter/${id}`, {
             method: "DELETE"
         });
 
-    }
+    },
     
+    async getAvailableMatters(conversationId) {
+
+        console.log("Conversation ID:", conversationId);
+
+        const matters = await this.getMatters();
+
+        console.log("All Matters:", matters);
+
+        const data = matters.filter((matter) => {
+
+            const exists = matter.conversations?.some((conversation) => {
+
+                console.log(
+                    "Comparing:",
+                    conversation.id,
+                    "===",
+                    conversationId
+                );
+
+                return String(conversation.id) === String(conversationId);
+
+            });
+
+            console.log("Already linked:", exists);
+
+            return !exists;
+
+        });
+
+        console.log("Filtered Matters:", data);
+
+        return data;
+
+    }
 
 };

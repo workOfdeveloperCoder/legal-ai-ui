@@ -1,11 +1,12 @@
 import { Folder, MoreHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import dayjs from "dayjs";
 import { useState, useEffect, useRef } from "react";
 import { chatService } from "../../services/chatService";
+import { useNavigate } from "react-router-dom";
 
+import dayjs from "dayjs";
 
-export default function MatterCard({ key, matter, setActivePage }) {
+export default function MatterCard({  matter }) {
 
     const [open, setOpen] = useState(false)
     const menuRef = useRef(null);
@@ -13,6 +14,7 @@ export default function MatterCard({ key, matter, setActivePage }) {
     const [showSubmenu, setShowSubmenu] = useState(false);
     const [submenuPosition, setSubmenuPosition] = useState("right");
     const submenuRef = useRef(null);
+    const navigate = useNavigate();
 
     async function loadUnlistedConversations(matterId) {
 
@@ -207,7 +209,7 @@ export default function MatterCard({ key, matter, setActivePage }) {
                 <div className="flex items-center gap-2">
 
                     <button
-                        onClick={() => setActivePage(`/matter/${matter.id}`)}
+                        onClick={() => {navigate(`/matter/${matter.id}`);onClose?.();}}
                         className="cursor-pointer rounded-md border border-slate-200 px-4 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                     >
                         Open Matter

@@ -23,3 +23,74 @@ body{
   background-color: #ffc853;
 
 }
+/* ============================
+   iPhone SE (320px)
+   ============================ */
+@media (max-width: 320px) {
+    html {
+        font-size: 11px;
+    }
+}
+
+/* ============================
+   iPhone 12/13/14, SE 2022
+   ============================ */
+@media (min-width: 321px) and (max-width: 375px) {
+    html {
+        font-size: 12px;
+    }
+}
+
+/* ============================
+   Large phones
+   ============================ */
+@media (min-width: 376px) and (max-width: 430px) {
+    html {
+        font-size: 13px;
+    }
+}
+
+/* ============================
+   Large phones / landscape
+   ============================ */
+@media (min-width: 431px) and (max-width: 576px) {
+    html {
+        font-size: 14px;
+    }
+}
+
+/* ============================
+   Tablets
+   ============================ */
+@media (min-width: 577px) and (max-width: 768px) {
+    html {
+        font-size: 15px;
+    }
+}
+
+/* ============================
+   Small laptops
+   ============================ */
+@media (min-width: 769px) and (max-width: 992px) {
+    html {
+        font-size: 15.5px;
+    }
+}
+
+/* ============================
+   Medium laptops
+   ============================ */
+@media (min-width: 993px) and (max-width: 1200px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+/* ============================
+   Desktop
+   ============================ */
+@media (min-width: 1201px) {
+    html {
+        font-size: 16px;
+    }
+}

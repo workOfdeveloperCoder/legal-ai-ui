@@ -209,14 +209,14 @@
         3
       ],
       "updatedAt": "3 min ago",
-      "nextHearing": "2026-08-06T11:50:00Z"
+      "nextHearing": "2026-08-06T11:45:00Z"
     },
     {
       "id": "2",
       "title": "Application",
       "lastMessage": "Need divorce and bail papers",
       "conversations": [
-         {
+        {
           "id": "2",
           "title": "Bail Application"
         },
@@ -232,7 +232,7 @@
         2
       ],
       "updatedAt": "6 min ago",
-      "nextHearing": "2026-11-09T11:50:00Z"
+      "nextHearing": "2026-11-09T11:45:00Z"
     },
     {
       "id": "Nk4k6e7F994",
@@ -242,7 +242,7 @@
       "documents": [],
       "tasks": [],
       "updatedAt": "Just now",
-      "nextHearing": "2027-03-12"
+      "nextHearing": "2027-03-12T11:45:00Z"
     }
   ],
   "mattersDetails": [
@@ -379,5 +379,209 @@
       "createdAt": "2026-07-06T13:00:00Z"
     }
   ],
+  "dashboard": {
+    "welcome": {
+      "title": "Welcome back, Yasir",
+      "subtitle": "How can I help you with your legal work today?"
+    },
+    "matters": [
+      {
+        "id": "1",
+        "title": "Case Study",
+        "lastMessage": "Explain Sections 302 and 402",
+        "updatedAt": "3 min ago",
+        "nextHearing": "2026-08-06T11:45:00Z"
+      },
+      {
+        "id": "2",
+        "title": "Application",
+        "lastMessage": "Need divorce and bail papers",
+        "updatedAt": "6 min ago",
+        "nextHearing": "2026-11-09T11:45:00Z"
+      },
+      {
+        "id": "Nk4k6e7F994",
+        "title": "Legal War",
+        "lastMessage": "",
+        "updatedAt": "Just now",
+        "nextHearing": "2027-03-12T11:45:00Z"
+      }
+    ],
+    "stats": [
+      {
+        "id": 1,
+        "title": "Matters",
+        "value": 3,
+        "icon": "Folder"
+      },
+      {
+        "id": 2,
+        "title": "Conversations",
+        "value": 4,
+        "icon": "MessageSquare"
+      },
+      {
+        "id": 3,
+        "title": "Documents",
+        "value": 3,
+        "icon": "FileText"
+      },
+      {
+        "id": 4,
+        "title": "Pending Tasks",
+        "value": 3,
+        "icon": "CheckSquare"
+      }
+    ],
+    "recentActivity": [
+      {
+        "id": 1,
+        "conversationId": "1",
+        "matterId": "1",
+        "title": "Section 302 PPC",
+        "matter": "Case Study",
+        "description": "Explain Section 302",
+        "time": "2 min ago"
+      },
+      {
+        "id": 2,
+        "conversationId": "2",
+        "matterId": "2",
+        "title": "Bail Application",
+        "matter": "Application",
+        "description": "Need bail draft",
+        "time": "5 min ago"
+      },
+      {
+        "id": 3,
+        "conversationId": "3",
+        "matterId": "1",
+        "title": "Section 402 PPC",
+        "matter": "Case Study",
+        "description": "Explain Section 402",
+        "time": "15 min ago"
+      },
+      {
+        "id": "4",
+        "conversationId": "4",
+        "matterId": "2",
+        "title": "Divorce Application",
+        "matter": "Application",
+        "description": "Need divorce papers",
+        "time": "25 min ago"
+      }
+    ],
+    "calendar": [
+      {
+        "id": 1,
+        "title": "Court Hearing",
+        "matterId": "1",
+        "matter": "Case Study",
+        "date": "2026-07-10",
+        "time": "10:00 AM",
+        "type": "hearing"
+      },
+      {
+        "id": 2,
+        "title": "Client Meeting",
+        "matterId": "2",
+        "matter": "Application",
+        "date": "2026-07-11",
+        "time": "2:30 PM",
+        "type": "meeting"
+      },
+      {
+        "id": 3,
+        "title": "Research Deadline",
+        "matterId": "1",
+        "matter": "Case Study",
+        "date": "2026-07-12",
+        "time": "11:00 AM",
+        "type": "deadline"
+      }
+    ],
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Review Section 302",
+        "matter": "Case Study",
+        "priority": "High",
+        "status": "In Progress",
+        "dueDate": "Today"
+      },
+      {
+        "id": 2,
+        "title": "Finalize Bail Draft",
+        "matter": "Application",
+        "priority": "High",
+        "status": "Todo",
+        "dueDate": "Tomorrow"
+      },
+      {
+        "id": 3,
+        "title": "Read Civil Procedure Code",
+        "matter": "Case Study",
+        "priority": "Low",
+        "status": "Todo",
+        "dueDate": "Jul 12"
+      }
+    ],
+    "upcomingHearings": [
+      {
+        "id": 1,
+        "matterId": "1",
+        "matter": "Case Study",
+        "court": "Lahore High Court",
+        "date": "06 Aug 2026",
+        "time": "11:50 AM"
+      },
+      {
+        "id": 2,
+        "matterId": "2",
+        "matter": "Application",
+        "court": "District Court",
+        "date": "09 Nov 2026",
+        "time": "11:50 AM"
+      }
+    ],
+    "quickActions": [
+      {
+        "id": 1,
+        "title": "Draft the Document",
+        "description": "Create any legal document",
+        "icon": "FilePlus"
+      },
+      {
+        "id": 2,
+        "title": "Find Legal Authorties",
+        "description": "Search cases, laws and more",
+        "icon": "Scale"
+      },
+      {
+        "id": 3,
+        "title": "Sumarized Document",
+        "description": "Get key points in seconds",
+        "icon": "FilePenLine"
+      },
+      {
+        "id": 4,
+        "title": "Analyze a Contract",
+        "description": "Review clauses and riskes",
+        "icon": "FileCog"
+      },
+      {
+        "id": 5,
+        "title": "Prepare for Hearing",
+        "description": "Build arguments and notes",
+        "icon": "Gavel"
+      },
+      {
+        "id": 6,
+        "title": "Compare Legal Provisions",
+        "description": "Compare Laws side by side",
+        "icon": "Landmark"
+      }
+    ]
+  },
   "$schema": "./node_modules/json-server/schema.json"
 }
