@@ -53,30 +53,31 @@ Future integration:
 # 📁 Project Structure
 src/
 │
-├── api/
-│ └── services/
-│ ├── chatService.js
-│ └── matterService.js
+├── api/ # API configuration and HTTP clients
 │
-├── components/
-│ ├── chat/
-│ ├── matter/
-│ ├── sidebar/
-│ └── ui/
+├── services/ # Business logic and API service handlers
+│ ├── chatService.js # Chat-related API operations
+│ └── matterService.js # Matter/project API operations
 │
-├── pages/
+├── components/ # Reusable UI components
+│ ├── chat/ # Chat interface components
+│ ├── matter/ # Matter-related components
+│ ├── sidebar/ # Sidebar navigation components
+│ └── ui/ # Common UI components
+│
+├── pages/ # Application pages/routes
 │ ├── Dashboard.jsx
 │ ├── Matter.jsx
 │ └── Chat.jsx
 │
-├── layouts/
+├── layouts/ # Page layout wrappers
 │
-├── hooks/
+├── hooks/ # Custom React hooks
 │
-├── utils/
+├── utils/ # Utility/helper functions
 │
-├── App.jsx
-└── main.jsx
+├── App.jsx # Main application component
+└── main.jsx # Application entry point
 
 ---
 
