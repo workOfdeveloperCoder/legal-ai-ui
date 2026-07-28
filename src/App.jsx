@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion} from 'framer-motion';
 import { useLocation, useNavigate } from "react-router-dom";
+import { getCurrentUser } from "./services/auth";
 
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
@@ -18,6 +19,8 @@ export default function App() {
     const navigate = useNavigate();
 
     const location = useLocation();
+
+    const user = getCurrentUser();
 
     const [activePage, setActivePage] = useState("dashboard");
 
@@ -57,12 +60,12 @@ export default function App() {
             <main className="flex flex-1 flex-col overflow-hidden">
 
 
-                <Header
+                <Header user={user}
                     onMenuClick={() => setSidebarOpen(true)}
                 />
 
                 <div className="flex-1 overflow-y-auto min-[1500px]:overflow-hidden min-[1500px]:min-h-0">
-                    <AppRoutes />
+                    <AppRoutes user={user}/>
                 </div>
 
             </main>

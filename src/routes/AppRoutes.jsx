@@ -6,7 +6,7 @@ import Matter from "../components/matter/Matter";
 import MatterDetails from "../components/matter/MatterDetails";
 import ChatArea from "../components/chat/ChatArea";
 
-export default function AppRoutes() {
+export default function AppRoutes({user}) {
     const location = useLocation();
 
     return (
@@ -25,7 +25,7 @@ export default function AppRoutes() {
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<Navigate to="/dashboard" replace />}/>
 
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard" element={<Dashboard user={user} />} />
                     <Route path="/matters" element={<Matters />} />
                     {/* <Route path="/matter/:matterId" element={<MatterDetails />} /> */}
                     <Route path="/conversation/:conversationId" element={<ChatArea />} />

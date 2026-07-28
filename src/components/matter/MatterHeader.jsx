@@ -8,10 +8,13 @@ import {
     Star
 } from "lucide-react";
 
+import SubHeader from "../layout/SubHeader";
+import { motion } from "framer-motion";
+
 export default function MatterHeader() {
     return (
         <div className="border-b border-[#ECECEC] bg-white px-8 py-5">
-
+         
             {/* Breadcrumb */}
 
             <div className="mb-4 flex items-center gap-2 text-[13px] text-[#8B8B96]">
@@ -68,6 +71,8 @@ export default function MatterHeader() {
                     </div>
 
                 </div>
+
+                
 
                 {/* Right */}
 

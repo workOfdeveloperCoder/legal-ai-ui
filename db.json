@@ -39,6 +39,34 @@
         "id": "2",
         "title": "Application"
       }
+    },
+    {
+      "title": "What is section 302?",
+      "lastMessage": "What is section 302?",
+      "updatedAt": "Just now",
+      "matter": null,
+      "id": "nW0OhlACtso"
+    },
+    {
+      "title": "New Conversation",
+      "lastMessage": "",
+      "updatedAt": "Just now",
+      "matter": null,
+      "id": "uLZfEiD9MfM"
+    },
+    {
+      "title": "New Conversation",
+      "lastMessage": "",
+      "updatedAt": "Just now",
+      "matter": null,
+      "id": "Yrgd78oRBlk"
+    },
+    {
+      "title": "New Conversation",
+      "lastMessage": "",
+      "updatedAt": "Just now",
+      "matter": null,
+      "id": "D9udIIuByvY"
     }
   ],
   "conversationDetails": [
@@ -183,6 +211,39 @@
           "content": "A divorce application is a legal request made by a spouse..."
         }
       ]
+    },
+    {
+      "id": "ELMHCihWbkc",
+      "conversationId": "nW0OhlACtso",
+      "messages": [
+        {
+          "id": 1784744217376,
+          "role": "user",
+          "content": "What is section 302?",
+          "createdAt": "2026-07-22T18:16:57.376Z"
+        },
+        {
+          "id": 1784744218212,
+          "role": "assistant",
+          "content": "Dummy AI response...",
+          "createdAt": "2026-07-22T18:16:58.211Z"
+        }
+      ]
+    },
+    {
+      "id": "d6bkP75lRco",
+      "conversationId": "uLZfEiD9MfM",
+      "messages": []
+    },
+    {
+      "id": "bR5wx4_Ddbg",
+      "conversationId": "Yrgd78oRBlk",
+      "messages": []
+    },
+    {
+      "id": "8wXkSKvgB6g",
+      "conversationId": "D9udIIuByvY",
+      "messages": []
     }
   ],
   "matters": [
@@ -381,7 +442,7 @@
   ],
   "dashboard": {
     "welcome": {
-      "title": "Welcome back, Yasir",
+      "title": "Welcome back, Waqar",
       "subtitle": "How can I help you with your legal work today?"
     },
     "matters": [

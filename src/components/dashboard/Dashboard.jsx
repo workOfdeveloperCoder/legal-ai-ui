@@ -10,7 +10,7 @@ import QuickActions from "./QuickActions";
 import StartChatBanner from "./StartChatBanner";
 import MyMattersCard from "./MyMattersCard";
 
-export default function Dashboard() {
+export default function Dashboard( { user }) {
     const [dashboard, setDashboard] = useState(null);
 
     useEffect(() => {
@@ -31,7 +31,7 @@ export default function Dashboard() {
 
                     {/* Left */}
                     <div className="min-[1500px]:col-span-8 flex flex-col min-h-0 overflow-hidden gap-6">
-                        <WelcomeCard data={dashboard?.welcome} />
+                        <WelcomeCard data={dashboard?.welcome} user={user}/>
 
                         <StartChatBanner data={dashboard?.startChat} />
 

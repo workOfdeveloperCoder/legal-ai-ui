@@ -1,6 +1,8 @@
 import { Sparkle } from "lucide-react";
 
-export default function WelcomeCard({ data }) {
+export default function WelcomeCard({ data, user }) {
+
+    const firstName = user?.name?.split(" ")[0] ?? "Guest";
 
     function getGreeting() {
         const hour = new Date().getHours();
@@ -29,7 +31,7 @@ export default function WelcomeCard({ data }) {
                 <div>
 
                     <h1 className="mt-2 text-4xl flex font-bold ">
-                        {getGreeting() }, Yasir
+                        {getGreeting() }, { firstName }!
                          <Sparkle size={40}  
                             fill="currentColor"
                             className="ml-3 text-yellow-500"
