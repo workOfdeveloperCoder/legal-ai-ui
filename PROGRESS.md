@@ -1,44 +1,50 @@
 # Project Progress Log
 
 ## Last Updated
-Tuesday, Aug 11, 2026 (~10:10 PM PKT)
+Tuesday, Aug 11, 2026 (~11:35 PM PKT)
 
 ## Current State
-- Conversations now sync across devices via server APIs:
-  - `GET /api/v1/conversations`
-  - `GET /api/v1/conversations/{id}`
-- `legal-ai-ui` loads conversation list/history from the backend after login (localStorage only for drafts + citation cache).
-- Chat still uses `POST /api/v1/chat`.
+- Document-scoped summarization/Q&A is implemented end-to-end across `legal-chatbot` + `legal-ai-ui`.
+- Upload returns `document_id` (+ `vectorized`/`processed`); chat sends `document_id` for document questions.
+- Document tasks query only `chatbot_documents` filtered by `document_id` + ownership; no `legal_documents` contamination.
+- Empty extraction no longer marks documents processed/vectorized; chat fails clearly when a doc is not indexed.
 
 ## What Was Done This Session
-- Explained/fixed cross-device conversation sync by exposing conversation list + detail endpoints and wiring the UI to them.
-- Earlier: Legal Chatbot API integration, matter create fix, dashboard null crash, richer citations.
+- Added optional `document_id` to `ChatRequest`.
+- Wired frontend upload → `document_id` → `POST /chat`.
+- Fixed query routing (`has_uploaded_documents` + `document_id` precedence).
+- Implemented strict document-scoped Qdrant retrieval and hard-stop on empty/foreign chunks.
+- Fixed empty-extraction processing flags; improved PDF MIME/`octet-stream` handling.
+- Added document-scope prompt instruction + retrieval debug logging.
+- Tested upload, Qdrant isolation, ownership, empty/invalid docs, and RAG prompt purity (live deepseek-r1:32b summarize timed out on LLM latency).
 
 ### Files created/modified
-- Created: `src/lib/apiClient.js`, `src/lib/conversationStore.js`, `src/services/documentService.js`, `src/components/auth/LoginPage.jsx`, `.env.example`, `.env`
-- Modified: `vite.config.js`, `src/services/auth.js`, `chatService.js`, `matterService.js`, `dashboardService.js`, `App.jsx`, chat/layout/dashboard/matter components, `AppRoutes.jsx`, `.gitignore`
+**Backend (`legal-chatbot`)**
+- `app/schemas/chat.py`, `app/schemas/document.py`
+- `app/services/chat_service.py`, `app/services/document_service.py`
+- `app/repositories/document_repository.py`
+- `app/rag/qdrant_retriever.py`, `app/rag/rag_service.py`, `app/rag/repository.py`, `app/rag/prompt_builder.py`
+- `app/vector/filters.py`
+- `app/document/extractor.py`
+- `app/api/dependencies/services.py`
+
+**Frontend (`legal-ai-ui`)**
+- `src/components/chat/ChatArea.jsx`
+- `src/services/chatService.js`
 
 ## In Progress / Half Done
-- Paperclip upload UI is not wired to `documentService` yet (needs matter context in chat).
-- Matter page redirects into a conversation rather than embedding ChatArea in-place.
-- Full-repo `eslint .` still reports pre-existing unused-import issues in untouched matter files.
+- Matter-header uploads do not yet auto-attach `document_id` into subsequent chat messages (conversation paperclip path does).
 
 ## Next Steps (Do This First When You Return)
-1. Run `legal-chatbot` on `:8000` and `legal-ai-ui` with `npm run dev`; register/login and send a chat.
-2. Optionally add backend routes for conversation list + message history (service methods already exist).
-3. Add production CORS on `legal-chatbot` if not using a reverse proxy.
-4. Wire document upload from the chat paperclip when a matter is linked.
-5. Optionally load real matters into the dashboard My Matters card from `/matters`.
+1. Smoke-test UI: upload “Clog on Discretion” via paperclip, ask “Summarize this document,” confirm answer is document-pure (LLM may be slow with deepseek-r1:32b).
+2. Optionally wire MatterHeader upload → store `activeDocumentId` for matter chats.
+3. Consider a faster Ollama chat model for interactive latency.
 
 ## Known Issues / Blockers
-- Backend has **no** `GET /conversations` or history routes — sidebar/history rely on localStorage.
-- Backend has **no** CORS middleware — local Vite proxy works; production needs CORS or same-origin proxy.
-- Chat requests can be long-running (LLM); UI supports abort on the client only.
-- Dashboard cards empty unless json-server mock is running on `VITE_MOCK_API_URL`.
+- Live `/chat` with `deepseek-r1:32b` can exceed 3 minutes; retrieval isolation is verified independently of LLM latency.
+- Older Qdrant points may still have `filename: null` (separate citation metadata issue; not isolation).
 
 ## Key Decisions & Context
-- Keep `legal-ai-ui` as the primary frontend architecture; use `legal-chatbot` as the API reference only.
-- Do not invent streaming — backend uses non-streaming Ollama calls.
-- Bridge missing conversation list/history with client cache rather than inventing fake endpoints.
-- Auth uses JWT access + refresh tokens from `legal-chatbot`.
-- Env: `VITE_API_BASE_URL=/api/v1`, `VITE_MOCK_API_URL` optional for dashboard.
+- `document_id` is optional for backward compatibility; when present it forces document-aware task + isolated retrieval.
+- Normal legal research without `document_id` still searches private docs + global `legal_documents`.
+- Ownership failures return 404 (no existence leak); unindexed docs return 400 with a clear re-upload message.

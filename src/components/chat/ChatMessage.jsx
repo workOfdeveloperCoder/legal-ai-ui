@@ -135,7 +135,24 @@ export default function ChatMessage({ message }) {
             }`}
           >
             {isUser ? (
-              <p className="m-0">{message.content}</p>
+              <>
+                {message.attachments?.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {message.attachments.map((file, index) => (
+                      <span
+                        key={`${file.filename || file.name}-${index}`}
+                        className="inline-flex items-center gap-1 rounded-lg bg-white/70 px-2 py-1 text-[12px] text-slate-700"
+                      >
+                        <FileText size={12} className="text-amber-700" />
+                        <span className="max-w-[180px] truncate">
+                          {file.filename || file.name}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <p className="m-0">{message.content}</p>
+              </>
             ) : (
               <div
                 className="

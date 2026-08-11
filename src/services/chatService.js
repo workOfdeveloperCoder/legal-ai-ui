@@ -60,8 +60,108 @@ function formatUpdatedAt(value) {
   }
 }
 
+function uniquePreserve(values = []) {
+  const seen = new Set();
+  const out = [];
+  for (const value of values) {
+    if (value == null) continue;
+    const marker = String(value).trim().toLowerCase();
+    if (!marker || seen.has(marker)) continue;
+    seen.add(marker);
+    out.push(value);
+  }
+  return out;
+}
+
+function citationMergeKey(citation) {
+  const filename = (citation?.filename || "").trim().toLowerCase();
+  if (filename) return `file:${filename}`;
+  if (citation?.document_id) return `doc:${citation.document_id}`;
+  return `chunk:${citation?.id || citation?.excerpt || Math.random()}`;
+}
+
+/**
+ * Multiple retrieved chunks often share one filename.
+ * Collapse them into a single Resources entry for the UI.
+ */
+function mergeCitationsByFile(citations = []) {
+  const merged = new Map();
+
+  for (const citation of citations) {
+    if (!citation) continue;
+    const key = citationMergeKey(citation);
+    const existing = merged.get(key);
+
+    if (!existing) {
+      merged.set(key, {
+        ...citation,
+        sections: [...(citation.sections || [])],
+        keywords: [...(citation.keywords || [])],
+        _excerpts: citation.excerpt || citation.content
+          ? [citation.excerpt || citation.content]
+          : [],
+      });
+      continue;
+    }
+
+    const nextScore = Number(citation.score || 0);
+    const prevScore = Number(existing.score || 0);
+    if (nextScore > prevScore) {
+      existing.score = citation.score;
+      existing.id = citation.id || existing.id;
+    }
+
+    const excerpt = citation.excerpt || citation.content;
+    if (excerpt && !existing._excerpts.includes(excerpt)) {
+      existing._excerpts.push(excerpt);
+    }
+
+    existing.sections = uniquePreserve([
+      ...(existing.sections || []),
+      ...(citation.sections || []),
+    ]);
+    existing.keywords = uniquePreserve([
+      ...(existing.keywords || []),
+      ...(citation.keywords || []),
+    ]).slice(0, 12);
+
+    for (const field of [
+      "document_id",
+      "filename",
+      "title",
+      "heading",
+      "law_name",
+      "document_type",
+      "category",
+      "sub_category",
+      "practice_area",
+      "court",
+      "year",
+      "jurisdiction",
+      "summary",
+    ]) {
+      if (
+        (existing[field] == null || existing[field] === "") &&
+        citation[field] != null &&
+        citation[field] !== ""
+      ) {
+        existing[field] = citation[field];
+      }
+    }
+  }
+
+  return Array.from(merged.values())
+    .map((item) => {
+      const excerpt =
+        item._excerpts?.length > 0 ? item._excerpts.join(" … ") : item.excerpt;
+      const { _excerpts, ...citation } = item;
+      return { ...citation, excerpt, content: excerpt };
+    })
+    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
+}
+
 function mapCitationsToSources(citations = []) {
-  return citations.map((citation, index) => {
+  return mergeCitationsByFile(citations).map((citation, index) => {
     const title =
       citation.title ||
       citation.law_name ||
@@ -285,7 +385,8 @@ export const chatService = {
 
   /**
    * Create a local draft conversation. The backend creates the real
-   * conversation on the first POST /chat (when conversation_id is omitted).
+   * conversation on the first POST /chat (when conversation_id is omitted),
+   * or via ensureServerConversation() before conversation-scoped uploads.
    */
   async createConversation({ matter = null } = {}) {
     const id = createId("draft");
@@ -304,13 +405,63 @@ export const chatService = {
   },
 
   /**
+   * Ensure a real server conversation exists (needed before conversation uploads).
+   * Replaces a local draft id when necessary.
+   */
+  async ensureServerConversation(conversationId, { title, matter = null } = {}) {
+    const userId = currentUserId();
+
+    if (!isDraftId(conversationId)) {
+      return String(conversationId);
+    }
+
+    const created = await apiRequest("/conversations", {
+      method: "POST",
+      body: JSON.stringify({
+        title: title || "New Conversation",
+        matter_id: matter?.id || null,
+      }),
+    });
+
+    const realId = String(created.id);
+    const detail =
+      getCachedConversation(userId, conversationId) ||
+      emptyDetail(realId, matter);
+
+    const nextDetail = {
+      ...detail,
+      id: realId,
+      conversationId: realId,
+      title: created.title || detail.title || "New Conversation",
+      matter: matter || detail.matter,
+    };
+
+    replaceCachedConversationId(
+      userId,
+      conversationId,
+      realId,
+      {
+        id: realId,
+        title: nextDetail.title,
+        lastMessage: "",
+        updatedAt: "Just now",
+        matter: nextDetail.matter,
+        isDraft: false,
+      },
+      nextDetail
+    );
+
+    return realId;
+  },
+
+  /**
    * Send a message to POST /api/v1/chat.
    * @param {string} conversationId
    * @param {string} message
-   * @param {{ matterId?: string|null, signal?: AbortSignal }} [options]
+   * @param {{ matterId?: string|null, documentId?: string|null, signal?: AbortSignal }} [options]
    */
   async sendMessage(conversationId, message, options = {}) {
-    const { matterId = null, signal } = options;
+    const { matterId = null, documentId = null, signal } = options;
     const userId = currentUserId();
     const isDraft = isDraftId(conversationId);
 
@@ -357,6 +508,10 @@ export const chatService = {
       matter_id: matterId || detail.matter?.id || null,
     };
 
+    if (documentId) {
+      payload.document_id = documentId;
+    }
+
     try {
       const response = await apiRequest("/chat", {
         method: "POST",
@@ -388,6 +543,7 @@ export const chatService = {
           ? titleFromMessage
           : detail.title || titleFromMessage,
         matter: detail.matter || (matterId ? { id: matterId } : null),
+        activeDocumentId: documentId || detail.activeDocumentId || null,
         messages: [
           ...(detail.messages || []).slice(0, -1),
           confirmedUserMessage,
