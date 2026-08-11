@@ -1,13 +1,13 @@
 /**
  * Chat integration for legal-chatbot.
  *
- * Real API:
+ * Real APIs:
  *   POST /api/v1/chat
- *   body: { matter_id?, conversation_id?, message }
- *   response: { conversation_id, response, citations[] }
+ *   GET  /api/v1/conversations
+ *   GET  /api/v1/conversations/{id}
  *
- * No streaming. Conversation list/history HTTP APIs are not exposed by the
- * backend yet — local cache bridges that gap for this browser session.
+ * Local draft conversations (before first message) still use localStorage.
+ * Server conversations sync across devices for the same user.
  */
 
 import { apiRequest } from "../lib/apiClient";
@@ -29,6 +29,25 @@ function createId(prefix = "msg") {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isDraftId(id) {
+  return String(id).startsWith("draft-");
+}
+
+function formatUpdatedAt(value) {
+  if (!value) return "Just now";
+  try {
+    const date = new Date(value);
+    return date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "Just now";
+  }
 }
 
 function mapCitationsToSources(citations = []) {
@@ -62,7 +81,8 @@ function mapCitationsToSources(citations = []) {
         citation.sections?.length > 0
           ? citation.sections.slice(0, 6).join(", ")
           : undefined,
-      excerpt: citation.excerpt || null,
+      excerpt: citation.excerpt || citation.content || null,
+      content: citation.content || citation.excerpt || null,
       summary: citation.summary || null,
       filename: citation.filename || null,
       lawName: citation.law_name || null,
@@ -88,17 +108,138 @@ function emptyDetail(id, matter = null) {
   };
 }
 
+function mapServerListItem(item) {
+  const id = String(item.id);
+  return {
+    id,
+    title: item.title || "New Conversation",
+    lastMessage: item.last_message || "",
+    updatedAt: formatUpdatedAt(item.last_message_at || item.updated_at),
+    matter: item.matter_id
+      ? {
+          id: String(item.matter_id),
+          title: item.matter_title || null,
+        }
+      : null,
+    isDraft: false,
+    isPinned: Boolean(item.is_pinned),
+  };
+}
+
+function mapServerDetail(data) {
+  const id = String(data.id);
+  const matter = data.matter_id
+    ? {
+        id: String(data.matter_id),
+        title: data.matter_title || null,
+      }
+    : null;
+
+  const messages = (data.messages || []).map((message) => ({
+    id: String(message.id),
+    role: String(message.role).toLowerCase(),
+    content: message.content,
+    createdAt: message.created_at,
+    sources: [],
+  }));
+
+  return {
+    id,
+    conversationId: id,
+    title: data.title || "New Conversation",
+    matter,
+    messages,
+    model: "legal-chatbot",
+    createdAt: data.created_at,
+    updatedAt: data.updated_at || data.last_message_at,
+    isPinned: Boolean(data.is_pinned),
+  };
+}
+
 export const chatService = {
   async getConversations() {
-    return listCachedConversations(currentUserId());
+    const userId = currentUserId();
+    const drafts = listCachedConversations(userId).filter((item) =>
+      isDraftId(item.id)
+    );
+
+    try {
+      const data = await apiRequest("/conversations", { method: "GET" });
+      const serverItems = (data?.items || []).map(mapServerListItem);
+
+      // Keep local drafts at the top; server conversations below.
+      const merged = [...drafts, ...serverItems];
+
+      // Refresh cache metas for server conversations (keep draft details).
+      for (const item of serverItems) {
+        const existing = getCachedConversation(userId, item.id);
+        upsertCachedConversation(
+          userId,
+          item,
+          existing || emptyDetail(item.id, item.matter)
+        );
+      }
+
+      return merged;
+    } catch (error) {
+      console.error("Failed to load conversations from server:", error);
+      return listCachedConversations(userId);
+    }
   },
 
   async getConversation(conversationId) {
-    const cached = getCachedConversation(currentUserId(), conversationId);
-    if (cached) return cached;
+    const userId = currentUserId();
 
-    // Draft / unknown id — return an empty shell so the prompt still works.
-    return emptyDetail(conversationId);
+    if (isDraftId(conversationId)) {
+      return (
+        getCachedConversation(userId, conversationId) ||
+        emptyDetail(conversationId)
+      );
+    }
+
+    try {
+      const data = await apiRequest(`/conversations/${conversationId}`, {
+        method: "GET",
+      });
+      const detail = mapServerDetail(data);
+
+      // Preserve locally cached sources on assistant messages when possible
+      // (server history does not store citations yet).
+      const cached = getCachedConversation(userId, conversationId);
+      if (cached?.messages?.length) {
+        detail.messages = detail.messages.map((message) => {
+          if (message.role !== "assistant") return message;
+          const match = cached.messages.find(
+            (cachedMessage) =>
+              cachedMessage.role === "assistant" &&
+              cachedMessage.content === message.content &&
+              cachedMessage.sources?.length
+          );
+          return match ? { ...message, sources: match.sources } : message;
+        });
+      }
+
+      upsertCachedConversation(
+        userId,
+        {
+          id: detail.id,
+          title: detail.title,
+          lastMessage:
+            detail.messages[detail.messages.length - 1]?.content || "",
+          updatedAt: formatUpdatedAt(detail.updatedAt),
+          matter: detail.matter,
+          isDraft: false,
+        },
+        detail
+      );
+
+      return detail;
+    } catch (error) {
+      console.error("Failed to load conversation from server:", error);
+      const cached = getCachedConversation(userId, conversationId);
+      if (cached) return cached;
+      throw error;
+    }
   },
 
   async getAvailableConversations(matterId) {
@@ -146,7 +287,7 @@ export const chatService = {
   async sendMessage(conversationId, message, options = {}) {
     const { matterId = null, signal } = options;
     const userId = currentUserId();
-    const isDraft = String(conversationId).startsWith("draft-");
+    const isDraft = isDraftId(conversationId);
 
     let detail =
       getCachedConversation(userId, conversationId) ||
@@ -218,7 +359,9 @@ export const chatService = {
         ...detail,
         id: realId,
         conversationId: realId,
-        title: isFirstMessage ? titleFromMessage : detail.title || titleFromMessage,
+        title: isFirstMessage
+          ? titleFromMessage
+          : detail.title || titleFromMessage,
         matter: detail.matter || (matterId ? { id: matterId } : null),
         messages: [
           ...(detail.messages || []).slice(0, -1),

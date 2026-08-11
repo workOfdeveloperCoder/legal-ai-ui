@@ -1,10 +1,13 @@
 /**
  * Client-side conversation cache.
  *
- * `legal-chatbot` persists conversations server-side but does not yet expose
- * HTTP routes to list conversations or fetch message history. Until those
- * endpoints exist, the UI keeps a per-user local cache so sidebar + reload
- * work for chats started in this browser.
+ * Server conversations are loaded from:
+ *   GET /api/v1/conversations
+ *   GET /api/v1/conversations/{id}
+ *
+ * LocalStorage still stores:
+ * - draft conversations (before first message)
+ * - cached details / citation sources for faster UI
  */
 
 const CHANGE_EVENT = "legal-ai:conversations-changed";

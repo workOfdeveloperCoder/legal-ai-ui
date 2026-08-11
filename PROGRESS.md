@@ -1,21 +1,18 @@
 # Project Progress Log
 
 ## Last Updated
-Tuesday, Aug 11, 2026 (~7:20 PM PKT)
+Tuesday, Aug 11, 2026 (~10:10 PM PKT)
 
 ## Current State
-- `legal-ai-ui` is wired to the real `legal-chatbot` FastAPI (`/api/v1`) for auth, chat, matters, and document upload.
-- Chat UI works against `POST /api/v1/chat` with richer **Resources** from Qdrant/legal-gpt chunks (title, law, court, year, excerpt, keywords, score).
-- No streaming — backend returns a single JSON `ChatResponse`.
-- Conversation list/history HTTP APIs are still missing; UI uses localStorage cache.
-- Dashboard cards tolerate empty mock data.
-- Local Vite proxy: `/api` → `http://localhost:8000`.
+- Conversations now sync across devices via server APIs:
+  - `GET /api/v1/conversations`
+  - `GET /api/v1/conversations/{id}`
+- `legal-ai-ui` loads conversation list/history from the backend after login (localStorage only for drafts + citation cache).
+- Chat still uses `POST /api/v1/chat`.
 
 ## What Was Done This Session
-- Integrated Legal Chatbot APIs into legal-ai-ui (auth, chat, matters, documents).
-- Fixed matter create transaction bug (`db.begin()` on already-open session).
-- Fixed dashboard null `.map` crash.
-- Enriched citations from legal-gpt Qdrant chunks with readable excerpts + metadata for UI Resources.
+- Explained/fixed cross-device conversation sync by exposing conversation list + detail endpoints and wiring the UI to them.
+- Earlier: Legal Chatbot API integration, matter create fix, dashboard null crash, richer citations.
 
 ### Files created/modified
 - Created: `src/lib/apiClient.js`, `src/lib/conversationStore.js`, `src/services/documentService.js`, `src/components/auth/LoginPage.jsx`, `.env.example`, `.env`
