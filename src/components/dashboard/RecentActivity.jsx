@@ -10,7 +10,7 @@ export default function RecentActivity({ data }) {
         </h2>
        <div className="flex-1 overflow-y-auto hide-scrollbar rounded-3xl border border-slate-200 bg-white shadow-[inset_0_10px_10px_-10px_rgba(0,0,0,0.15),inset_0_-10px_10px_-10px_rgba(0,0,0,0.15)]">
 
-            {data.map(item => (
+            {(data || []).map(item => (
                 <motion.div
                     key={item.id}
                     whileHover={{

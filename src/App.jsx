@@ -1,77 +1,96 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion} from 'framer-motion';
-import { useLocation, useNavigate } from "react-router-dom";
-import { getCurrentUser } from "./services/auth";
+import {
+  getCurrentUser,
+  isAuthenticated,
+  subscribeAuth,
+} from "./services/auth";
 
 import Sidebar from "./components/layout/Sidebar";
 import Header from "./components/layout/Header";
-import ChatArea from "./components/chat/ChatArea";
-import Matters from "./components/matter/Matters";
-import MatterDetail from "./components/matter/MatterDetails";
-import Dashboard from "./components/dashboard/Dashboard";
+import LoginPage from "./components/auth/LoginPage";
+import AppRoutes from "./routes/AppRoutes";
 
 import { chatService } from "./services/chatService";
-
-import AppRoutes from './routes/AppRoutes'
+import { subscribeConversations } from "./lib/conversationStore";
 
 export default function App() {
+  const [authed, setAuthed] = useState(isAuthenticated());
+  const [user, setUser] = useState(getCurrentUser());
+  const [conversations, setConversations] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    const navigate = useNavigate();
-
-    const location = useLocation();
-
-    const user = getCurrentUser();
-
-    const [activePage, setActivePage] = useState("dashboard");
-
-    const [conversations, setConversations] = useState([]);
-
-    const [selectedConversationId, setSelectedConversationId] = useState(null);
-
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-
-    useEffect(() => {
-        loadSidebar();
-    }, []);
-
-    async function loadSidebar() {
-
-        const data = await chatService.getConversations();
-
-        setConversations(data);
-
-        if (data.length) {
-            setConversations(data);
-        }
-
+  async function loadSidebar() {
+    try {
+      const data = await chatService.getConversations();
+      setConversations(data);
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+      setConversations([]);
     }
+  }
 
+  useEffect(() => {
+    const unsubAuth = subscribeAuth(() => {
+      const nextAuthed = isAuthenticated();
+      setAuthed(nextAuthed);
+      setUser(getCurrentUser());
+      if (!nextAuthed) {
+        setConversations([]);
+      }
+    });
+    return unsubAuth;
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return undefined;
+
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (!cancelled) loadSidebar();
+    });
+
+    const unsub = subscribeConversations(() => {
+      loadSidebar();
+    });
+
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [authed]);
+
+  if (!authed) {
     return (
-
-        <div className="flex h-screen w-screen overflow-hidden bg-background">
-
-            <Sidebar
-                conversations={conversations}
-                onSelect={setSelectedConversationId}
-                isOpen={sidebarOpen}
-                onClose={() => setSidebarOpen(false)}
-            />
-
-            <main className="flex flex-1 flex-col overflow-hidden">
-
-
-                <Header user={user}
-                    onMenuClick={() => setSidebarOpen(true)}
-                />
-
-                <div className="flex-1 overflow-y-auto min-[1500px]:overflow-hidden min-[1500px]:min-h-0">
-                    <AppRoutes user={user}/>
-                </div>
-
-            </main>
-
-        </div>
-
+      <LoginPage
+        onAuthenticated={() => {
+          setAuthed(true);
+          setUser(getCurrentUser());
+        }}
+      />
     );
+  }
 
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
+      <Sidebar
+        conversations={conversations}
+        onSelect={() => {}}
+        onConversationsChange={loadSidebar}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
+
+      <main className="flex flex-1 flex-col overflow-hidden">
+        <Header
+          user={user}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
+
+        <div className="flex-1 overflow-y-auto min-[1500px]:overflow-hidden min-[1500px]:min-h-0">
+          <AppRoutes user={user} />
+        </div>
+      </main>
+    </div>
+  );
 }

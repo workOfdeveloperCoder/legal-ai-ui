@@ -10,55 +10,74 @@ import QuickActions from "./QuickActions";
 import StartChatBanner from "./StartChatBanner";
 import MyMattersCard from "./MyMattersCard";
 
-export default function Dashboard( { user }) {
-    const [dashboard, setDashboard] = useState(null);
+const EMPTY_DASHBOARD = {
+  welcome: null,
+  startChat: null,
+  quickActions: [],
+  recentActivity: [],
+  matters: [],
+  calendar: [],
+  tasks: [],
+};
 
-    useEffect(() => {
-        loadDashboard();
-    }, []);
+export default function Dashboard({ user }) {
+  const [dashboard, setDashboard] = useState(EMPTY_DASHBOARD);
+  const [loading, setLoading] = useState(true);
 
-    async function loadDashboard() {
-        const data = await dashboardService.getDashboard();
-        setDashboard(data);
-    }
+  useEffect(() => {
+    let cancelled = false;
 
-    if (!dashboard) return null;
+    (async () => {
+      setLoading(true);
+      const data = await dashboardService.getDashboard();
+      if (!cancelled) {
+        setDashboard(data || EMPTY_DASHBOARD);
+        setLoading(false);
+      }
+    })();
 
-    return (
-        <div className="flex flex-col bg-[#F7F8FC] min-[1500px]:h-full min-[1500px]:min-h-0">
-            <div className="flex flex-col p-6 min-[1500px]:h-full min-[1500px]:min-h-0">
-                <div className="grid grid-cols-1 gap-6 min-[1500px]:grid-cols-12 min-[1500px]:flex-1 min-[1500px]:min-h-0 min-[1500px]:overflow-hidden">
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-                    {/* Left */}
-                    <div className="min-[1500px]:col-span-8 flex flex-col min-h-0 overflow-hidden gap-6">
-                        <WelcomeCard data={dashboard?.welcome} user={user}/>
+  return (
+    <div className="flex flex-col bg-[#F7F8FC] min-[1500px]:h-full min-[1500px]:min-h-0">
+      <div className="flex flex-col p-6 min-[1500px]:h-full min-[1500px]:min-h-0">
+        <div className="grid grid-cols-1 gap-6 min-[1500px]:grid-cols-12 min-[1500px]:min-h-0 min-[1500px]:flex-1 min-[1500px]:overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-6 overflow-hidden min-[1500px]:col-span-8">
+            <WelcomeCard data={dashboard?.welcome} user={user} />
 
-                        <StartChatBanner data={dashboard?.startChat} />
+            <StartChatBanner data={dashboard?.startChat} />
 
-                        <QuickActions data={dashboard?.quickActions} />
+            <QuickActions data={dashboard?.quickActions} />
 
-                        <RecentActivity data={dashboard?.recentActivity} />
-                    </div>
+            <RecentActivity data={dashboard?.recentActivity} />
+          </div>
 
-                    {/* Right */}
-                   <div className="min-h-0 min-[1500px]:col-span-4">
-                        <div className="flex flex-col gap-6 min-[1500px]:h-full">
-                            <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
-                                <MyMattersCard matters={dashboard?.matters || []} />
-                            </div>
+          <div className="min-h-0 min-[1500px]:col-span-4">
+            <div className="flex flex-col gap-6 min-[1500px]:h-full">
+              <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
+                <MyMattersCard matters={dashboard?.matters || []} />
+              </div>
 
-                            <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
-                                <CalendarCard data={dashboard?.calendar} />
-                            </div>
+              <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
+                <CalendarCard data={dashboard?.calendar} />
+              </div>
 
-                            <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
-                                <TasksCard data={dashboard?.tasks} />
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
+              <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
+                <TasksCard data={dashboard?.tasks} />
+              </div>
             </div>
+          </div>
         </div>
-    );
+
+        {loading && (
+          <p className="mt-2 text-center text-xs text-slate-400">
+            Loading dashboard…
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }

@@ -1,47 +1,26 @@
-import { Paperclip, Globe, Sparkles, Mic, ArrowUp } from "lucide-react";
+import { Paperclip, Mic, ArrowUp, Square } from "lucide-react";
 import { useState } from "react";
-import { chatService } from "../../services/chatService";
 
-export default function PromptBar({
-    conversation,
-    setConversation,
-}) {
-    const [input, setInput] = useState("");
-    const [loading, setLoading] = useState(false);
+export default function PromptBar({ loading = false, onSend, onStop }) {
+  const [input, setInput] = useState("");
 
-    async function send() {
-        if (!input.trim() || loading) return;
+  async function send() {
+    if (!input.trim() || loading) return;
+    const text = input.trim();
+    setInput("");
+    await onSend?.(text);
+  }
 
-        setLoading(true);
-
-        try {
-            const updatedConversation = await chatService.sendMessage(
-                conversation.conversationId,
-                input.trim()
-            );
-
-            setConversation(updatedConversation);
-            setInput("");
-        } catch (error) {
-            console.error("Failed to send message:", error);
-        } finally {
-            setLoading(false);
-        }
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
     }
+  };
 
-    const handleKeyDown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            send();
-        }
-    };
-
-    return (
-    <div className="mx-auto bg-[#F7F8FC] w-full max-w-5xl">
-
-      <div className="rounded-[30px] border border-slate-200 bg-background p-3 shadow-xl shadow-slate-200/60">
-
-        {/* Textarea */}
+  return (
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="rounded-3xl border border-black/5 bg-white px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
         <textarea
           rows={1}
           value={input}
@@ -49,47 +28,55 @@ export default function PromptBar({
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Ask anything about Pakistani law..."
-          className="max-h-52 min-h-[54px] w-full resize-none border-0 bg-transparent px-3 py-2 text-[15px] leading-7 text-slate-800 outline-none placeholder:text-slate-400"
+          className="max-h-40 min-h-[44px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-[1.55] text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
         />
 
-        {/* Bottom Toolbar */}
-        <div className="mt-3 flex items-center justify-between">
-
-          {/* Left */}
-          <div className="flex items-center gap-2">
-
-            <button className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-slate-100">
-              <Paperclip size={18} />
-            </button>
-
-          </div>
-
-          {/* Right */}
-          <div className="flex items-center gap-2">
-
-            <button className="flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-slate-100">
-              <Mic size={18} />
-            </button>
-
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-1">
             <button
-              disabled={!input.trim()}
-              onClick={send}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white transition hover:scale-105 hover:bg-black disabled:cursor-not-allowed disabled:bg-slate-300"
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100"
+              title="Attachments require a matter upload endpoint"
             >
-              <ArrowUp size={18} />
+              <Paperclip size={16} />
             </button>
-
           </div>
 
-        </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100"
+            >
+              <Mic size={16} />
+            </button>
 
+            {loading ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-black"
+                title="Stop request"
+              >
+                <Square size={11} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={!input.trim()}
+                onClick={send}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <ArrowUp size={15} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Footer */}
-      <p className="mt-4 text-center text-xs text-slate-400">
-        AI responses may contain mistakes. Verify legal references before relying on them.
+      <p className="mt-2.5 text-center text-[11px] text-slate-400">
+        AI responses may contain mistakes. Verify legal references before
+        relying on them.
       </p>
-
     </div>
   );
 }

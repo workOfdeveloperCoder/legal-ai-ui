@@ -1,82 +1,192 @@
-import { Bot, User } from "lucide-react";
+import { useState } from "react";
+import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+
+function formatTime(message) {
+  const value = message.createdAt || message.created_at;
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(value);
+  }
+}
+
+function SourceCard({ source, index }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const relevance =
+    typeof source.score === "number"
+      ? Math.round(Math.min(Math.max(source.score, 0), 1) * 100)
+      : null;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-black/5 bg-white/80">
+      <button
+        type="button"
+        onClick={() => setExpanded((value) => !value)}
+        className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition hover:bg-black/[0.02]"
+      >
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow/30 text-slate-800">
+          <BookOpen size={12} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="truncate text-[13px] font-medium text-slate-800">
+              {source.title}
+            </p>
+            <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+              {relevance !== null && (
+                <span className="text-[11px] text-slate-500">{relevance}%</span>
+              )}
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </div>
+          </div>
+
+          {source.meta && (
+            <p className="mt-0.5 line-clamp-1 text-[12px] text-slate-500">
+              {source.meta}
+            </p>
+          )}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="space-y-2 border-t border-black/5 px-3 py-2.5">
+          {source.summary && (
+            <p className="text-[12px] leading-5 text-slate-600">
+              {source.summary}
+            </p>
+          )}
+
+          {source.excerpt && (
+            <blockquote className="rounded-lg bg-[#F7F7F8] px-2.5 py-2 text-[12px] leading-5 whitespace-pre-wrap text-slate-700">
+              {source.excerpt}
+            </blockquote>
+          )}
+
+          {source.section && (
+            <p className="text-[12px] text-slate-500">
+              <span className="font-medium text-slate-700">Sections: </span>
+              {source.section}
+            </p>
+          )}
+
+          {source.keywords?.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {source.keywords.slice(0, 8).map((keyword) => (
+                <span
+                  key={keyword}
+                  className="rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-800"
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {source.filename && (
+            <div className="flex items-center gap-1 text-[11px] text-slate-400">
+              <FileText size={11} />
+              <span className="truncate">{source.filename}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function ChatMessage({ message }) {
-    const isUser = message.role === "user";
+  const isUser = message.role === "user";
+  const hasError = message.status === "error";
 
-    return (
+  return (
+    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+      <div
+        className={`flex w-full max-w-3xl items-start gap-3 ${
+          isUser ? "flex-row-reverse" : ""
+        }`}
+      >
         <div
-            className= {`flex mb-8 ${
-                isUser ? "justify-end" : "justify-start"
-            }`}
+          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+            isUser
+              ? "bg-yellow text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
         >
-            <div
-                className={`flex items-start gap-4 max-w-4xl ${
-                    isUser ? "flex-row-reverse" : ""
-                }`}
-            >
-                {/* Avatar */}
-                <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                        isUser
-                            ? "bg-yellow text-white"
-                            : "bg-gray-200 text-gray-700"
-                    }`}
-                >
-                    {isUser ? <User size={18} /> : <Bot size={18} />}
-                </div>
-
-                {/* Message */}
-                <div
-                    className={`rounded-3xl px-5 shadow-sm ${
-                        isUser
-                            ? "bg-[#FFE2A3] text-gray-500"
-                            : "bg-[#F7F8FC]"
-                    }`}
-                >
-                    <p className="leading-7 mt-3 whitespace-pre-wrap">
-                        {message.content}
-                    </p>
-
-                    {/* Sources */}
-                    {message.sources && (
-                        <div className="mt-5 border-t pt-4">
-                            <p className="text-xs font-semibold uppercase text-gray-500 mb-3">
-                                Sources
-                            </p>
-
-                            <div className="space-y-2">
-                                {message.sources.map((source, index) => (
-                                    <div
-                                        key={index}
-                                        className="rounded-xl bg-gray-100 px-4 py-3"
-                                    >
-                                        <div className="font-medium text-sm text-gray-800">
-                                            {source.title}
-                                        </div>
-
-                                        {source.section && (
-                                            <div className="text-xs text-gray-500 mt-1">
-                                                Section {source.section}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Time */}
-                    <div
-                        className={`mt-3 text-xs ${
-                            isUser
-                                ? "text-violet-200"
-                                : "text-gray-400"
-                        }`}
-                    >
-                        {message.created_at}
-                    </div>
-                </div>
-            </div>
+          {isUser ? <User size={14} /> : <Bot size={14} />}
         </div>
-    );
+
+        <div
+          className={`min-w-0 max-w-[min(100%,42rem)] rounded-3xl px-4 py-3 shadow-sm ${
+            isUser
+              ? "bg-[#FFE2A3] text-slate-800"
+              : "bg-[#F7F8FC] text-slate-800"
+          } ${hasError ? "ring-1 ring-red-300" : ""}`}
+        >
+          <div
+            className={`text-[15px] leading-[1.65] tracking-[-0.01em] ${
+              isUser ? "whitespace-pre-wrap" : ""
+            }`}
+          >
+            {isUser ? (
+              <p className="m-0">{message.content}</p>
+            ) : (
+              <div
+                className="
+                  chat-md
+                  [&_p]:my-2.5 [&_p]:first:mt-0 [&_p]:last:mb-0
+                  [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1
+                  [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-[15px] [&_h1]:font-semibold
+                  [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-[15px] [&_h2]:font-semibold
+                  [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-[15px] [&_h3]:font-semibold
+                  [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px]
+                  [&_pre]:my-2.5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-slate-100 [&_pre]:p-3 [&_pre]:text-[13px]
+                  [&_blockquote]:my-2.5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-600
+                  [&_a]:text-slate-900 [&_a]:underline
+                "
+              >
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+
+          {hasError && message.error && (
+            <p className="mt-2 text-[12px] text-red-600">{message.error}</p>
+          )}
+
+          {!isUser && message.sources?.length > 0 && (
+            <div className="mt-4 border-t border-black/5 pt-3">
+              <p className="mb-2 text-[11px] font-medium tracking-wide text-slate-500 uppercase">
+                Resources · {message.sources.length}
+              </p>
+
+              <div className="space-y-1.5">
+                {message.sources.map((source, index) => (
+                  <SourceCard
+                    key={source.id || index}
+                    source={source}
+                    index={index}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`mt-1.5 text-[11px] ${
+              isUser ? "text-right text-slate-400" : "text-slate-400"
+            }`}
+          >
+            {formatTime(message)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

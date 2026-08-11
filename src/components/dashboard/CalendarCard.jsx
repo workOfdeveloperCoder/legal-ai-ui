@@ -22,34 +22,41 @@ export default function CalendarCard({ data }) {
 
             <div className="mt-6 overflow-y-auto space-y-4 hide-scrollbar">
 
-                {data.map(event => (
+                {(data || []).length === 0 ? (
+                    <p className="py-6 text-center text-sm text-slate-400">
+                        No upcoming calendar events
+                    </p>
+                ) : (
+                    (data || []).map((event) => (
+                        <motion.div
+                            key={event.id}
+                            whileHover={{
+                                x: 2,
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center gap-4"
+                        >
+                            <DateBadge date={event.date} />
 
-                 <motion.div
-                    key={event.id}
-                    whileHover={{
-                        x: 2,
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex items-center gap-4"
-                >
-                    <DateBadge date={event.date}/>
+                            <div className="flex-1">
+                                <h3 className="font-medium">
+                                    {event.title}
+                                </h3>
 
-                    <div className="flex-1">
-                        <h3 className="font-medium">
-                            {event.title}
-                        </h3>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {(event.type || "").charAt(0).toUpperCase() +
+                                        (event.type || "").slice(1)}{" "}
+                                    • {event.matter}
+                                </p>
+                            </div>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                            {event.type.charAt(0).toUpperCase() + event.type.slice(1)} • {event.matter}
-                        </p>
-                    </div>
-
-                    <div className="flex-1 text-slate-500 text-right">
-                        {event.time}
-                    </div>
-                </motion.div>
-                ))}
+                            <div className="flex-1 text-right text-slate-500">
+                                {event.time}
+                            </div>
+                        </motion.div>
+                    ))
+                )}
 
             </div>
 

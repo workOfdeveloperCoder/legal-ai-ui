@@ -39,83 +39,90 @@ export default function TasksCard({ data }) {
             </div>
 
             <div className="flex-1 overflow-y-auto hide-scrollbar">
-                {data.map((task) => {
-                    const isCompleted = completed.includes(task.id);
+                {(data || []).length === 0 ? (
+                    <p className="py-6 text-center text-sm text-slate-400">
+                        No tasks yet
+                    </p>
+                ) : (
+                    (data || []).map((task) => {
+                        const isCompleted = completed.includes(task.id);
 
-                    return (
-                        <motion.div
-                            key={task.id}
-                            whileHover={{
-                                x: 2,
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                            transition={{ duration: 0.15 }}
-                            className="relative flex items-center gap-4 py-3"
-                        >
-                            <button
-                                onClick={() => toggleTask(task.id)}
-                                className="transition-colors"
+                        return (
+                            <motion.div
+                                key={task.id}
+                                whileHover={{
+                                    x: 2,
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                transition={{ duration: 0.15 }}
+                                className="relative flex items-center gap-4 py-3"
                             >
-                                <div className="flex h-7 w-7 items-center justify-center">
-                                    <AnimatePresence mode="wait" initial={false}>
-                                        {isCompleted ? (
-                                            <motion.div
-                                                key="checked"
-                                                initial={{ scale: 0, rotate: -90 }}
-                                                animate={{ scale: 1, rotate: 0 }}
-                                                exit={{ scale: 0, rotate: 90 }}
-                                                transition={{
-                                                    type: "spring",
-                                                    stiffness: 900,
-                                                    damping: 25,
-                                                }}
-                                            >
-                                                <CheckCircle2
-                                                    size={30}
-                                                    fill="#ffb300"
-                                                    className="text-white"
-                                                />
-                                            </motion.div>
-                                        ) : (
-                                            <motion.div
-                                                key="unchecked"
-                                                initial={{ scale: 0.8, opacity: 0 }}
-                                                animate={{ scale: 1, opacity: 1 }}
-                                                exit={{ scale: 0.8, opacity: 0 }}
-                                                transition={{ duration: 0.10 }}
-                                            >
-                                                <Circle
-                                                    size={25}
-                                                    className="text-slate-500"
-                                                />
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                <button
+                                    onClick={() => toggleTask(task.id)}
+                                    className="transition-colors"
+                                >
+                                    <div className="flex h-7 w-7 items-center justify-center">
+                                        <AnimatePresence mode="wait" initial={false}>
+                                            {isCompleted ? (
+                                                <motion.div
+                                                    key="checked"
+                                                    initial={{ scale: 0, rotate: -90 }}
+                                                    animate={{ scale: 1, rotate: 0 }}
+                                                    exit={{ scale: 0, rotate: 90 }}
+                                                    transition={{
+                                                        type: "spring",
+                                                        stiffness: 900,
+                                                        damping: 25,
+                                                    }}
+                                                >
+                                                    <CheckCircle2
+                                                        size={30}
+                                                        fill="#ffb300"
+                                                        className="text-white"
+                                                    />
+                                                </motion.div>
+                                            ) : (
+                                                <motion.div
+                                                    key="unchecked"
+                                                    initial={{ scale: 0.8, opacity: 0 }}
+                                                    animate={{ scale: 1, opacity: 1 }}
+                                                    exit={{ scale: 0.8, opacity: 0 }}
+                                                    transition={{ duration: 0.10 }}
+                                                >
+                                                    <Circle
+                                                        size={25}
+                                                        className="text-slate-500"
+                                                    />
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                </button>
+
+                                <div className="flex-1">
+                                    <h4 className="font-medium text-slate-900">
+                                        {task.title}
+                                    </h4>
+
+                                    <p className="text-sm text-slate-500">
+                                        {task.matter}
+                                    </p>
                                 </div>
-                            </button>
 
-                            <div className="flex-1">
-                                <h4 className="font-medium text-slate-900">
-                                    {task.title}
-                                </h4>
+                                <span
+                                    className={`rounded-md px-3 py-1 text-xs font-medium ${
+                                        priorityColors[task.priority] ||
+                                        "bg-slate-50 text-slate-500"
+                                    }`}
+                                >
+                                    {task.priority}
+                                </span>
 
-                                <p className="text-sm text-slate-500">
-                                    {task.matter}
-                                </p>
-                            </div>
-
-                            <span
-                                className={`rounded-md px-3 py-1 text-xs font-medium ${
-                                    priorityColors[task.priority]
-                                }`}
-                            >
-                                {task.priority}
-                            </span>
-
-                            <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-                        </motion.div>
-                    )
-                })}
+                                <div className="absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+                            </motion.div>
+                        );
+                    })
+                )}
             </div>
         </div>
     );

@@ -1,8 +1,14 @@
-import { Plus, Folder, MessageSquare, Settings, Scale, MoreHorizontal, LayoutDashboard } from "lucide-react";
-import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { matterService } from "../../services/matterService";
+import {
+    Plus,
+    Folder,
+    MessageSquare,
+    Settings,
+    Scale,
+    MoreHorizontal,
+    LayoutDashboard,
+} from "lucide-react";
+import { motion, LayoutGroup } from "framer-motion";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { chatService } from "../../services/chatService";
 import MattersMenu from "../menu/MattersMenu";
@@ -10,6 +16,7 @@ import MattersMenu from "../menu/MattersMenu";
 export default function Sidebar({
     conversations,
     onSelect,
+    onConversationsChange,
     isOpen,
     onClose,
 }) {
@@ -80,11 +87,20 @@ export default function Sidebar({
 
                     <button
                         onClick={async () => {
-                            const conversation = await chatService.createConversation();
+                            try {
+                                const conversation =
+                                    await chatService.createConversation();
 
-                            onSelect?.(conversation.id);
-
-                            navigate(`/conversation/${conversation.id}`);
+                                onSelect?.(conversation.id);
+                                onConversationsChange?.();
+                                navigate(`/conversation/${conversation.id}`);
+                                onClose?.();
+                            } catch (error) {
+                                console.error(
+                                    "Failed to create conversation:",
+                                    error
+                                );
+                            }
                         }}
                         className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow py-3 hover:bg-yellow"
                     >

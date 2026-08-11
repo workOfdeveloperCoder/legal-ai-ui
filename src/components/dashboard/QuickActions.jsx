@@ -9,7 +9,7 @@ export default function QuickActions({ data }) {
         </h2>
         <div className="grid grid-cols-3 gap-3">
 
-            {data.map(action => {
+            {(data || []).map(action => {
 
                 const Icon = Icons[action.icon];
 

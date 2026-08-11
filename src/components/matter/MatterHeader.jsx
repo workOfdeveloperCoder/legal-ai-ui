@@ -11,7 +11,7 @@ import {
 import SubHeader from "../layout/SubHeader";
 import { motion } from "framer-motion";
 
-export default function MatterHeader() {
+export default function MatterHeader({ title = "Matter" }) {
     return (
         <div className="border-b border-[#ECECEC] bg-white px-8 py-5">
          
@@ -27,12 +27,8 @@ export default function MatterHeader() {
 
                 <ChevronRight size={14} />
 
-                <span>Smith v. ABC Industries</span>
-
-                <ChevronRight size={14} />
-
                 <span className="font-medium text-[#444]">
-                    Initial Research
+                    {title}
                 </span>
 
             </div>
@@ -46,7 +42,7 @@ export default function MatterHeader() {
                     <div className="flex items-center gap-2">
 
                         <h1 className="text-[30px] font-semibold text-[#202124]">
-                            Smith v. ABC Industries
+                            {title}
                         </h1>
 
                         <Star

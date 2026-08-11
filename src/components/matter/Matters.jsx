@@ -29,11 +29,15 @@ export default function Matters({setActivePage }) {
 
         setLoading(true);
 
-        const data = await matterService.getMatters();
-
-        setMatters(data);
-
-        setLoading(false);
+        try {
+            const data = await matterService.getMatters();
+            setMatters(data);
+        } catch (error) {
+            console.error("Failed to load matters:", error);
+            setMatters([]);
+        } finally {
+            setLoading(false);
+        }
 
     }
 

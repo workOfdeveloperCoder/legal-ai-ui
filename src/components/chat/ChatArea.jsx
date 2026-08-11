@@ -1,88 +1,177 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { chatService } from "../../services/chatService";
+import { subscribeConversations } from "../../lib/conversationStore";
 
 import ChatMessage from "./ChatMessage";
 import EmptyState from "./EmptyState";
 import PromptBar from "./PromptBar";
 import SubHeader from "../layout/SubHeader";
 
-export default function ChatArea({hideHeader = false}) {
-    const [conversation, setConversation] = useState(null);
+export default function ChatArea({ hideHeader = false, matterId = null }) {
+  const [conversation, setConversation] = useState(null);
+  const [loadingConversation, setLoadingConversation] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
 
-    const messagesContainerRef = useRef(null);
-    const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  const abortRef = useRef(null);
 
-    const { conversationId } = useParams();
+  const navigate = useNavigate();
+  const { conversationId } = useParams();
 
+  useEffect(() => {
+    if (!conversationId) return undefined;
 
-    useEffect(() => {
-        if (!conversationId) return;
+    let cancelled = false;
+    const controller = new AbortController();
 
-        loadConversation();
-    }, [conversationId]);
-
-    async function loadConversation() {
+    (async () => {
+      setLoadingConversation(true);
+      setError("");
+      try {
         const data = await chatService.getConversation(conversationId);
+        if (!cancelled) setConversation(data);
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) {
+          setError(err?.message || "Failed to load conversation.");
+        }
+      } finally {
+        if (!cancelled) setLoadingConversation(false);
+      }
+    })();
 
+    return () => {
+      cancelled = true;
+      controller.abort();
+      abortRef.current?.abort();
+    };
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!conversationId) return undefined;
+
+    const unsub = subscribeConversations(() => {
+      chatService.getConversation(conversationId).then((data) => {
         setConversation(data);
+      });
+    });
+    return unsub;
+  }, [conversationId]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [conversation?.messages, sending]);
+
+  function handleStop() {
+    abortRef.current?.abort();
+    setSending(false);
+  }
+
+  async function handleSend(text) {
+    if (!conversationId || sending) return;
+
+    setSending(true);
+    setError("");
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setConversation((prev) => ({
+      ...(prev || { id: conversationId, conversationId, messages: [] }),
+      messages: [
+        ...(prev?.messages || []),
+        {
+          id: `temp-user-${Date.now()}`,
+          role: "user",
+          content: text,
+          createdAt: new Date().toISOString(),
+          status: "sending",
+        },
+      ],
+    }));
+
+    try {
+      const updated = await chatService.sendMessage(conversationId, text, {
+        matterId,
+        signal: controller.signal,
+      });
+
+      setConversation(updated);
+
+      if (String(updated.conversationId) !== String(conversationId)) {
+        navigate(`/conversation/${updated.conversationId}`, { replace: true });
+      }
+    } catch (err) {
+      if (err?.name === "AbortError") {
+        setError("Request cancelled.");
+      } else {
+        console.error("Failed to send message:", err);
+        setError(err?.message || "Failed to send message.");
+      }
+      try {
+        const data = await chatService.getConversation(conversationId);
+        setConversation(data);
+      } catch {
+        // ignore reload errors
+      }
+    } finally {
+      setSending(false);
+      abortRef.current = null;
     }
-
-    // Scroll to bottom whenever messages change
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({
-            behavior: "smooth",
-        });
-    }, [conversation?.messages]);
-
+  }
 
   return (
     <div className="flex h-full flex-col">
+      <SubHeader
+        hideHeader={hideHeader}
+        title={conversation?.title || "New Conversation"}
+        description="AI-powered legal research & drafting"
+      />
 
-        {/* Header */}
-        <SubHeader hideHeader={hideHeader} title={conversation?.title} description="AI-powered legal research & drafting"/>
+      <div className="flex-1 overflow-y-auto hide-scrollbar">
+        {loadingConversation && !conversation?.messages?.length ? (
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 py-8">
+            <div className="h-10 animate-pulse rounded-2xl bg-slate-200/80" />
+            <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
+          </div>
+        ) : !conversation?.messages?.length ? (
+          <EmptyState />
+        ) : (
+          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-6 py-6">
+            {conversation.messages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto hide-scrollbar">
-            {!conversation?.messages?.length ? (
-                <></>
-            ) : (
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-8 py-8">
-
-                {conversation?.messages.map((message) => (
-                    <ChatMessage
-                        key={message.id}
-                        message={message}
-                    />
-                ))}
-                {/* {loading && (
-                <div className="flex items-center gap-3">
-
-                    <div className="h-9 w-9 animate-pulse rounded-xl bg-yellow" />
-
-                    <div className="space-y-2">
-
-                    <div className="h-3 w-44 animate-pulse rounded bg-slate-300" />
-
-                    <div className="h-3 w-64 animate-pulse rounded bg-slate-200" />
-
-                    </div>
-
+            {sending && (
+              <div className="flex items-center gap-3 px-0.5">
+                <div className="h-7 w-7 animate-pulse rounded-full bg-slate-200" />
+                <div className="space-y-2">
+                  <div className="h-2.5 w-40 animate-pulse rounded bg-slate-200" />
+                  <div className="h-2.5 w-56 animate-pulse rounded bg-slate-100" />
                 </div>
-                )} */}
-
-            </div>
+              </div>
             )}
 
-        </div>
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
 
-            <div className="border-t bg-[#F7F8FC] border-slate-200 bg-background px-8 py-6">
-                <PromptBar
-                    conversation={conversation}
-                    setConversation={setConversation}
-                />
-            </div>
-        </div>
-    );
+      <div className="border-t border-slate-200/80 bg-[#F7F8FC] px-6 py-4">
+        {error && (
+          <div className="mx-auto mb-3 w-full max-w-3xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+        <PromptBar
+          loading={sending}
+          onSend={handleSend}
+          onStop={handleStop}
+        />
+      </div>
+    </div>
+  );
 }
