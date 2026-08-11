@@ -16,12 +16,22 @@ import {
   getCachedConversation,
   listCachedConversations,
   replaceCachedConversationId,
+  replaceConversationList,
   saveCachedDetail,
   upsertCachedConversation,
 } from "../lib/conversationStore";
 
 function currentUserId() {
   return getStoredUser()?.id || "anonymous";
+}
+
+/** Fetch list from API at most once per session unless refresh=true. */
+let conversationsSyncedForUser = null;
+let conversationsInFlight = null;
+
+export function resetConversationSyncState() {
+  conversationsSyncedForUser = null;
+  conversationsInFlight = null;
 }
 
 function createId(prefix = "msg") {
@@ -157,37 +167,48 @@ function mapServerDetail(data) {
 }
 
 export const chatService = {
-  async getConversations() {
-    const userId = currentUserId();
-    const drafts = listCachedConversations(userId).filter((item) =>
-      isDraftId(item.id)
-    );
-
-    try {
-      const data = await apiRequest("/conversations", { method: "GET" });
-      const serverItems = (data?.items || []).map(mapServerListItem);
-
-      // Keep local drafts at the top; server conversations below.
-      const merged = [...drafts, ...serverItems];
-
-      // Refresh cache metas for server conversations (keep draft details).
-      for (const item of serverItems) {
-        const existing = getCachedConversation(userId, item.id);
-        upsertCachedConversation(
-          userId,
-          item,
-          existing || emptyDetail(item.id, item.matter)
-        );
-      }
-
-      return merged;
-    } catch (error) {
-      console.error("Failed to load conversations from server:", error);
-      return listCachedConversations(userId);
-    }
+  /**
+   * Local sidebar list (no network).
+   */
+  getLocalConversations() {
+    return listCachedConversations(currentUserId());
   },
 
-  async getConversation(conversationId) {
+  /**
+   * @param {{ refresh?: boolean }} [options]
+   * - default: return cache after first successful sync
+   * - refresh: true forces one GET /conversations
+   */
+  async getConversations({ refresh = false } = {}) {
+    const userId = currentUserId();
+
+    if (!refresh && conversationsSyncedForUser === userId) {
+      return listCachedConversations(userId);
+    }
+
+    if (conversationsInFlight && !refresh) {
+      return conversationsInFlight;
+    }
+
+    conversationsInFlight = (async () => {
+      try {
+        const data = await apiRequest("/conversations", { method: "GET" });
+        const serverItems = (data?.items || []).map(mapServerListItem);
+        const merged = replaceConversationList(userId, serverItems);
+        conversationsSyncedForUser = userId;
+        return merged;
+      } catch (error) {
+        console.error("Failed to load conversations from server:", error);
+        return listCachedConversations(userId);
+      } finally {
+        conversationsInFlight = null;
+      }
+    })();
+
+    return conversationsInFlight;
+  },
+
+  async getConversation(conversationId, { refresh = false } = {}) {
     const userId = currentUserId();
 
     if (isDraftId(conversationId)) {
@@ -197,15 +218,20 @@ export const chatService = {
       );
     }
 
+    const cached = getCachedConversation(userId, conversationId);
+    const hasMessages = Boolean(cached?.messages?.length);
+
+    // Prefer cache for already-opened threads unless forced refresh / empty.
+    if (!refresh && hasMessages) {
+      return cached;
+    }
+
     try {
       const data = await apiRequest(`/conversations/${conversationId}`, {
         method: "GET",
       });
       const detail = mapServerDetail(data);
 
-      // Preserve locally cached sources on assistant messages when possible
-      // (server history does not store citations yet).
-      const cached = getCachedConversation(userId, conversationId);
       if (cached?.messages?.length) {
         detail.messages = detail.messages.map((message) => {
           if (message.role !== "assistant") return message;
@@ -236,14 +262,13 @@ export const chatService = {
       return detail;
     } catch (error) {
       console.error("Failed to load conversation from server:", error);
-      const cached = getCachedConversation(userId, conversationId);
       if (cached) return cached;
       throw error;
     }
   },
 
   async getAvailableConversations(matterId) {
-    const conversations = await this.getConversations();
+    const conversations = this.getLocalConversations();
 
     if (!matterId) return conversations;
 

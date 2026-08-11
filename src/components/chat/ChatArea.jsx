@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { chatService } from "../../services/chatService";
-import { subscribeConversations } from "../../lib/conversationStore";
+import {
+  getCachedConversation,
+  subscribeConversations,
+} from "../../lib/conversationStore";
+import { getStoredUser } from "../../lib/apiClient";
 
 import ChatMessage from "./ChatMessage";
 import EmptyState from "./EmptyState";
@@ -25,12 +29,12 @@ export default function ChatArea({ hideHeader = false, matterId = null }) {
     if (!conversationId) return undefined;
 
     let cancelled = false;
-    const controller = new AbortController();
 
     (async () => {
       setLoadingConversation(true);
       setError("");
       try {
+        // Network only when opening a thread (or cache is empty).
         const data = await chatService.getConversation(conversationId);
         if (!cancelled) setConversation(data);
       } catch (err) {
@@ -45,7 +49,6 @@ export default function ChatArea({ hideHeader = false, matterId = null }) {
 
     return () => {
       cancelled = true;
-      controller.abort();
       abortRef.current?.abort();
     };
   }, [conversationId]);
@@ -53,10 +56,11 @@ export default function ChatArea({ hideHeader = false, matterId = null }) {
   useEffect(() => {
     if (!conversationId) return undefined;
 
+    // Optimistic/local updates only — never re-hit the list/detail APIs here.
     const unsub = subscribeConversations(() => {
-      chatService.getConversation(conversationId).then((data) => {
-        setConversation(data);
-      });
+      const userId = getStoredUser()?.id || "anonymous";
+      const cached = getCachedConversation(userId, conversationId);
+      if (cached) setConversation(cached);
     });
     return unsub;
   }, [conversationId]);

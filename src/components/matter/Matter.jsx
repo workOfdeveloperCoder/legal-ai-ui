@@ -24,7 +24,7 @@ export default function Matter() {
         if (cancelled) return;
         setMatter(matterData);
 
-        const existing = (await chatService.getConversations()).find(
+        const existing = chatService.getLocalConversations().find(
           (conversation) =>
             conversation.matter?.id &&
             String(conversation.matter.id) === String(matterId)

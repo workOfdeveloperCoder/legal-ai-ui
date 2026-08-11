@@ -14,6 +14,7 @@ import {
   getStoredUser,
   setAuthSession,
 } from "../lib/apiClient";
+import { resetConversationSyncState } from "./chatService";
 
 function toUiUser(user) {
   if (!user) return null;
@@ -90,6 +91,7 @@ export async function logout() {
   } catch {
     // Always clear local session even if logout API fails.
   } finally {
+    resetConversationSyncState();
     clearAuthSession();
   }
 }

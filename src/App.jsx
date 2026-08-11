@@ -10,7 +10,10 @@ import Header from "./components/layout/Header";
 import LoginPage from "./components/auth/LoginPage";
 import AppRoutes from "./routes/AppRoutes";
 
-import { chatService } from "./services/chatService";
+import {
+  chatService,
+  resetConversationSyncState,
+} from "./services/chatService";
 import { subscribeConversations } from "./lib/conversationStore";
 
 export default function App() {
@@ -19,13 +22,17 @@ export default function App() {
   const [conversations, setConversations] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  async function loadSidebar() {
+  function syncSidebarFromCache() {
+    setConversations(chatService.getLocalConversations());
+  }
+
+  async function loadSidebarFromServer() {
     try {
-      const data = await chatService.getConversations();
+      const data = await chatService.getConversations({ refresh: true });
       setConversations(data);
     } catch (error) {
       console.error("Failed to load conversations:", error);
-      setConversations([]);
+      syncSidebarFromCache();
     }
   }
 
@@ -35,6 +42,7 @@ export default function App() {
       setAuthed(nextAuthed);
       setUser(getCurrentUser());
       if (!nextAuthed) {
+        resetConversationSyncState();
         setConversations([]);
       }
     });
@@ -46,12 +54,14 @@ export default function App() {
 
     let cancelled = false;
 
+    // One server fetch on login / session start.
     queueMicrotask(() => {
-      if (!cancelled) loadSidebar();
+      if (!cancelled) loadSidebarFromServer();
     });
 
+    // Later updates come from local cache only (no API loop).
     const unsub = subscribeConversations(() => {
-      loadSidebar();
+      syncSidebarFromCache();
     });
 
     return () => {
@@ -76,7 +86,7 @@ export default function App() {
       <Sidebar
         conversations={conversations}
         onSelect={() => {}}
-        onConversationsChange={loadSidebar}
+        onConversationsChange={syncSidebarFromCache}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
