@@ -5,7 +5,7 @@ export default function SubHeader({
 
     title = "New Conversation",
 
-    description = "AI-powered legal research & drafting",
+    description = null,
 
     action = null,
 

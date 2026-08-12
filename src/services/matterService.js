@@ -3,15 +3,16 @@
  * POST   /api/v1/matters
  * GET    /api/v1/matters          → { items: MatterResponse[] }
  * GET    /api/v1/matters/{id}
+ * GET    /api/v1/matters/{id}/conversations
  * PATCH  /api/v1/matters/{id}
  * DELETE /api/v1/matters/{id}
  *
  * Mapped into the shapes expected by existing legal-ai-ui matter cards.
  */
 
-import { apiRequest } from "../lib/apiClient";
+import { apiRequest, getStoredUser } from "../lib/apiClient";
 import { listCachedConversations } from "../lib/conversationStore";
-import { getStoredUser } from "../lib/apiClient";
+import { chatService } from "./chatService";
 
 function formatRelative(iso) {
   if (!iso) return "";
@@ -25,6 +26,21 @@ function formatRelative(iso) {
   } catch {
     return String(iso);
   }
+}
+
+function mapMatterConversation(item, matterId) {
+  return {
+    id: String(item.id),
+    title: item.title || "New Conversation",
+    lastMessage: item.last_message || item.lastMessage || "",
+    updatedAt: item.last_message_at || item.updated_at || item.updatedAt,
+    matter: {
+      id: String(matterId),
+      title: item.matter_title || null,
+    },
+    isDraft: false,
+    isPinned: Boolean(item.is_pinned),
+  };
 }
 
 function mapMatter(matter) {
@@ -57,20 +73,35 @@ function mapMatter(matter) {
 
 export const matterService = {
   async getMatters() {
+    const conversationsPromise = chatService
+      .getConversations({ refresh: true })
+      .catch(() => {});
+
     const data = await apiRequest("/matters", { method: "GET" });
+    await conversationsPromise;
+
     const items = Array.isArray(data) ? data : data?.items || [];
     return items.map(mapMatter);
   },
 
   async getMatter(id) {
+    try {
+      await chatService.getConversations({ refresh: true });
+    } catch {
+      // Matter detail still loads if conversation sync fails.
+    }
     const matter = await apiRequest(`/matters/${id}`, { method: "GET" });
     return mapMatter(matter);
   },
 
-  /**
-   * UI currently passes (title, model, nextHearing). Only title/description
-   * are supported by the backend create endpoint today.
-   */
+  async getMatterConversations(matterId) {
+    const data = await apiRequest(`/matters/${matterId}/conversations`, {
+      method: "GET",
+    });
+    const items = Array.isArray(data) ? data : data?.items || [];
+    return items.map((item) => mapMatterConversation(item, matterId));
+  },
+
   async createMatter(title, _model, _nextHearing, description = null) {
     const matter = await apiRequest("/matters", {
       method: "POST",

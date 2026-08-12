@@ -2,7 +2,7 @@
  * Shared HTTP client for the Legal Chatbot API (`legal-chatbot`).
  *
  * Auth: Bearer access token + refresh rotation via POST /auth/refresh.
- * Base URL: `import.meta.env.VITE_API_BASE_URL` (default `/api/v1`).
+ * Base URL: `VITE_API_ORIGIN` + `/api/v1`, or `VITE_API_BASE_URL` (default `/api/v1`).
  */
 
 const ACCESS_TOKEN_KEY = "legal_ai_access_token";
@@ -19,6 +19,10 @@ export class ApiError extends Error {
 }
 
 export function getApiBaseUrl() {
+  const origin = import.meta.env.VITE_API_ORIGIN?.replace(/\/$/, "");
+  if (origin) {
+    return `${origin}/api/v1`;
+  }
   const base = import.meta.env.VITE_API_BASE_URL || "/api/v1";
   return base.replace(/\/$/, "");
 }

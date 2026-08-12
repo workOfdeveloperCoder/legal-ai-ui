@@ -14,7 +14,7 @@ import {
 } from "../../services/documentService";
 
 export default function MatterHeader({
-  title = "Matter",
+  matter = null,
   matterId = null,
   onUploaded,
   onNewChat,
@@ -23,6 +23,11 @@ export default function MatterHeader({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploadInfo, setUploadInfo] = useState("");
+
+  const displayTitle = matter?.title || "Matter";
+  const chats = matter?.conversations?.length ?? 0;
+  const documents = matter?.documents?.length ?? 0;
+  const tasks = matter?.tasks?.length ?? 0;
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -53,15 +58,28 @@ export default function MatterHeader({
         <ChevronRight size={14} />
         <span>Matters</span>
         <ChevronRight size={14} />
-        <span className="font-medium text-[#444]">{title}</span>
+        <span className="font-medium text-[#444]">{displayTitle}</span>
       </div>
 
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-[30px] font-semibold text-[#202124]">{title}</h1>
+            <h1 className="text-[30px] font-semibold text-[#202124]">
+              {displayTitle}
+            </h1>
             <Star size={18} className="fill-[#F6B73C] text-[#F6B73C]" />
           </div>
+
+          <div className="mt-2 flex items-center gap-4 text-[14px] text-[#6C7280]">
+            <span>{matter?.status || "Active"}</span>
+            {matter?.nextHearing && (
+              <>
+                <span>•</span>
+                <span>Next Hearing {matter.nextHearing}</span>
+              </>
+            )}
+          </div>
+
           {(uploadError || uploadInfo) && (
             <p
               className={`mt-2 text-sm ${
@@ -75,9 +93,18 @@ export default function MatterHeader({
 
         <div className="flex items-center gap-4">
           <div className="flex gap-3">
-            <Stat icon={<FileText size={15} />} value="Documents" />
-            <Stat icon={<MessageSquare size={15} />} value="Chats" />
-            <Stat icon={<CheckSquare size={15} />} value="Tasks" />
+            <Stat
+              icon={<FileText size={15} />}
+              value={`${documents} Documents`}
+            />
+            <Stat
+              icon={<MessageSquare size={15} />}
+              value={`${chats} Chats`}
+            />
+            <Stat
+              icon={<CheckSquare size={15} />}
+              value={`${tasks} Tasks`}
+            />
           </div>
 
           <input

@@ -23,6 +23,31 @@ body{
   background-color: #ffc853;
 
 }
+
+/* ============================
+   Dot Animation
+   ============================ */
+
+   @keyframes typing-bounce{
+    0%, 60%, 100%{
+        transform: translateY(0);
+        opacity: 0.45;
+    }
+    30%{
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+   }
+
+   .typing-dot {
+    height: 0.5rem;
+    width: 0.5rem;
+    border-radius: 9999px;
+    background-color: #64748b; /* slate-500 */
+    animation: typing-bounce 1.2s ease-in-out infinite;
+  }
+
+
 /* ============================
    iPhone SE (320px)
    ============================ */

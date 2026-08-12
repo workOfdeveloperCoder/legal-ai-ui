@@ -18,6 +18,7 @@ export default function Matters({setActivePage }) {
     const [loading, setLoading] = useState(true);
 
     const [showAddModal, setShowAddModal] = useState(false);
+    const [error, setError] = useState("");
 
     useEffect(() => {
 
@@ -28,13 +29,15 @@ export default function Matters({setActivePage }) {
     async function loadMatters() {
 
         setLoading(true);
+        setError("");
 
         try {
             const data = await matterService.getMatters();
             setMatters(data);
-        } catch (error) {
-            console.error("Failed to load matters:", error);
+        } catch (err) {
+            console.error("Failed to load matters:", err);
             setMatters([]);
+            setError(err?.message || "Failed to load matters.");
         } finally {
             setLoading(false);
         }
@@ -77,6 +80,12 @@ export default function Matters({setActivePage }) {
 
                 <div className="mx-auto block min-[1300px]:grid max-w-7xl grid-cols-3 gap-6 p-8">
 
+                    {error && (
+                        <div className="col-span-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
+
                     {loading &&
                         [...Array(6)].map((_, i) => (
 
@@ -86,6 +95,12 @@ export default function Matters({setActivePage }) {
                             />
 
                         ))}
+
+                    {!loading && !error && matters.length === 0 && (
+                        <p className="col-span-full text-sm text-slate-500">
+                            No matters yet. Create one to get started.
+                        </p>
+                    )}
 
                     {!loading &&
                         matters.map((matter,index) => (

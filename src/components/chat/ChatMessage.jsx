@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText, Scale } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 function formatTime(message) {
@@ -112,15 +112,9 @@ export default function ChatMessage({ message }) {
           isUser ? "flex-row-reverse" : ""
         }`}
       >
-        <div
-          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-            isUser
-              ? "bg-yellow text-white"
-              : "bg-gray-200 text-gray-700"
-          }`}
-        >
-          {isUser ? <User size={14} /> : <Bot size={14} />}
-        </div>
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffc853]">
+           <Scale size={15} className="text-yellow" />
+         </div>
 
         <div
           className={`min-w-0 max-w-[min(100%,42rem)] rounded-3xl px-4 py-3 shadow-sm ${

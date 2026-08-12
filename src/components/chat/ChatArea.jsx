@@ -14,6 +14,7 @@ import ChatMessage from "./ChatMessage";
 import EmptyState from "./EmptyState";
 import PromptBar from "./PromptBar";
 import SubHeader from "../layout/SubHeader";
+import TypingIndicator from "./TypingIndicator";
 
 export default function ChatArea({
   hideHeader = false,
@@ -243,7 +244,7 @@ export default function ChatArea({
       <SubHeader
         hideHeader={hideHeader}
         title={conversation?.title || "New Conversation"}
-        description="AI-powered legal research & drafting"
+        description={null}
       />
 
       <div className="flex-1 overflow-y-auto hide-scrollbar">
@@ -261,18 +262,11 @@ export default function ChatArea({
             ))}
 
             {(sending || uploading) && (
-              <div className="flex items-center gap-3 px-0.5">
-                <div className="h-7 w-7 animate-pulse rounded-full bg-slate-200" />
-                <div className="space-y-2">
-                  <div className="h-2.5 w-40 animate-pulse rounded bg-slate-200" />
-                  <div className="h-2.5 w-56 animate-pulse rounded bg-slate-100" />
-                  <p className="text-[11px] text-slate-400">
-                    {uploading
-                      ? "Uploading to this conversation…"
-                      : "Waiting for Legal Chatbot…"}
-                  </p>
-                </div>
-              </div>
+              <TypingIndicator
+              label = {
+                uploading ? "Uploading and indexing documents..." : "Legal AI is researching..."
+              }
+              />
             )}
 
             <div ref={messagesEndRef} />
