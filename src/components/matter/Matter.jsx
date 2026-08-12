@@ -6,6 +6,7 @@ import MatterHeader from "./MatterHeader";
 import MatterConversationCards from "./MatterConversationCards";
 import { matterService } from "../../services/matterService";
 import { chatService } from "../../services/chatService";
+import { documentService } from "../../services/documentService";
 
 export default function Matter() {
   const { matterId } = useParams();
@@ -13,6 +14,7 @@ export default function Matter() {
   const [matter, setMatter] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [documents, setDocuments] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +67,26 @@ export default function Matter() {
     navigate(`/conversation/${realId}`);
   }
 
+  async function loadDocuments(){
+    if(!matterId) return;
+    try{
+      const docs = await documentService.getMatterDocuments(matterId);
+      setDocuments(docs);
+    setMatter((prev) => prev ? { ...prev, documents: docs } : prev);
+    }
+    catch(err){
+      console.error(err);
+      setDocuments([]);
+    }
+  }
+   useEffect(() =>{
+          loadDocuments();
+   }, [matterId]);
+
+   async function handleUploaded(uplaoded){
+    await loadDocuments();
+   }
+
   function handleSelectConversation(id) {
     navigate(`/conversation/${id}`);
   }
@@ -76,6 +98,7 @@ export default function Matter() {
           matter={matter}
           matterId={matterId}
           onNewChat={handleNewChat}
+          onUploaded= {handleUploaded}
         />
 
         <div className="flex min-h-0 flex-1 overflow-hidden">

@@ -20,6 +20,7 @@ import {
   saveCachedDetail,
   upsertCachedConversation,
 } from "../lib/conversationStore";
+import { normalizeTokenBudget } from "../lib/tokenBudget";
 
 function currentUserId() {
   return getStoredUser()?.id || "anonymous";
@@ -521,6 +522,8 @@ export const chatService = {
 
       const realId = String(response.conversation_id);
       const sources = mapCitationsToSources(response.citations);
+      // Backend TokenBudgetManager is the source of truth — display only.
+      const tokenBudget = normalizeTokenBudget(response);
 
       const assistantMessage = {
         id: createId("assistant"),
@@ -544,6 +547,8 @@ export const chatService = {
           : detail.title || titleFromMessage,
         matter: detail.matter || (matterId ? { id: matterId } : null),
         activeDocumentId: documentId || detail.activeDocumentId || null,
+        tokenBudget,
+        contextTrimmed: Boolean(tokenBudget?.trimmed),
         messages: [
           ...(detail.messages || []).slice(0, -1),
           confirmedUserMessage,

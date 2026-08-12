@@ -13,6 +13,7 @@
 import { apiRequest, getStoredUser } from "../lib/apiClient";
 import { listCachedConversations } from "../lib/conversationStore";
 import { chatService } from "./chatService";
+import { documentService } from "./documentService";
 
 function formatRelative(iso) {
   if (!iso) return "";
@@ -81,7 +82,19 @@ export const matterService = {
     await conversationsPromise;
 
     const items = Array.isArray(data) ? data : data?.items || [];
-    return items.map(mapMatter);
+    const matters = items.map(mapMatter);
+     
+    const withDocs = await Promise.all(
+      matters.map(async (matter) =>{
+          try{
+            const documents = await documentService.getMatterDocuments(matter.Id);
+            return { ...matter, documents };
+          }catch(err){
+            return { ...matter,documents: []};
+          }
+      })
+    ); 
+    return withDocs;
   },
 
   async getMatter(id) {
@@ -91,7 +104,14 @@ export const matterService = {
       // Matter detail still loads if conversation sync fails.
     }
     const matter = await apiRequest(`/matters/${id}`, { method: "GET" });
-    return mapMatter(matter);
+    const mapped = mapMatter(matter);
+
+    try{
+      const documents = await documentService.getMatterDocuments(id);
+      return { ...mapped, documents };
+    }catch(err){
+      return { ...mapped, documents: []};
+    }
   },
 
   async getMatterConversations(matterId) {

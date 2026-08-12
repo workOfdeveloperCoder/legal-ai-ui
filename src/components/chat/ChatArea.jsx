@@ -9,6 +9,10 @@ import {
   upsertCachedConversation,
 } from "../../lib/conversationStore";
 import { getStoredUser } from "../../lib/apiClient";
+import {
+  getContextLimitErrorMessage,
+  isContextLimitError,
+} from "../../lib/tokenBudget";
 
 import ChatMessage from "./ChatMessage";
 import EmptyState from "./EmptyState";
@@ -26,6 +30,8 @@ export default function ChatArea({
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [tokenBudget, setTokenBudget] = useState(null);
+  const [showTrimNotice, setShowTrimNotice] = useState(false);
 
   const messagesEndRef = useRef(null);
   const abortRef = useRef(null);
@@ -33,6 +39,11 @@ export default function ChatArea({
   const navigate = useNavigate();
   const params = useParams();
   const conversationId = conversationIdProp || params.conversationId;
+
+  useEffect(() => {
+    setShowTrimNotice(false);
+    setTokenBudget(null);
+  }, [conversationId]);
 
   useEffect(() => {
     if (!conversationId) return undefined;
@@ -44,7 +55,10 @@ export default function ChatArea({
       setError("");
       try {
         const data = await chatService.getConversation(conversationId);
-        if (!cancelled) setConversation(data);
+        if (!cancelled) {
+          setConversation(data);
+          if (data?.tokenBudget) setTokenBudget(data.tokenBudget);
+        }
       } catch (err) {
         console.error(err);
         if (!cancelled) {
@@ -67,7 +81,10 @@ export default function ChatArea({
     const unsub = subscribeConversations(() => {
       const userId = getStoredUser()?.id || "anonymous";
       const cached = getCachedConversation(userId, conversationId);
-      if (cached) setConversation(cached);
+      if (cached) {
+        setConversation(cached);
+        if (cached.tokenBudget) setTokenBudget(cached.tokenBudget);
+      }
     });
     return unsub;
   }, [conversationId]);
@@ -212,6 +229,10 @@ export default function ChatArea({
       }
 
       setConversation(updated);
+      setTokenBudget(updated?.tokenBudget ?? null);
+      if (updated?.contextTrimmed || updated?.tokenBudget?.trimmed) {
+        setShowTrimNotice(true);
+      }
 
       if (
         !conversationIdProp &&
@@ -222,6 +243,8 @@ export default function ChatArea({
     } catch (err) {
       if (err?.name === "AbortError") {
         setError("Request cancelled.");
+      } else if (isContextLimitError(err)) {
+        setError(getContextLimitErrorMessage());
       } else {
         console.error("Failed to send message:", err);
         setError(err?.message || "Failed to send message.");
@@ -229,6 +252,7 @@ export default function ChatArea({
       try {
         const data = await chatService.getConversation(activeId);
         setConversation(data);
+        if (data?.tokenBudget) setTokenBudget(data.tokenBudget);
       } catch {
         // ignore
       }
@@ -275,6 +299,11 @@ export default function ChatArea({
       </div>
 
       <div className="border-t border-slate-200/80 bg-[#F7F8FC] px-6 py-4">
+        {showTrimNotice && (
+          <div className="mx-auto mb-3 w-full max-w-3xl rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-[13px] text-amber-900">
+            Earlier context was automatically compressed.
+          </div>
+        )}
         {error && (
           <div className="mx-auto mb-3 w-full max-w-3xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -283,6 +312,7 @@ export default function ChatArea({
         <PromptBar
           loading={sending}
           uploading={uploading}
+          tokenBudget={tokenBudget}
           onSend={handleSend}
           onStop={handleStop}
         />

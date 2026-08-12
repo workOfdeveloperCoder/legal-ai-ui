@@ -5,6 +5,7 @@ import {
   isAllowedUploadFile,
   MAX_UPLOAD_BYTES,
 } from "../../services/documentService";
+import ContextUsageIndicator from "./ContextUsageIndicator";
 
 function formatBytes(bytes) {
   if (!bytes && bytes !== 0) return "";
@@ -16,6 +17,7 @@ function formatBytes(bytes) {
 export default function PromptBar({
   loading = false,
   uploading = false,
+  tokenBudget = null,
   onSend,
   onStop,
 }) {
@@ -146,6 +148,7 @@ export default function PromptBar({
             >
               <Paperclip size={16} />
             </button>
+            <ContextUsageIndicator tokenBudget={tokenBudget} />
           </div>
 
           <div className="flex items-center gap-1">
