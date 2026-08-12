@@ -258,7 +258,12 @@ export default function ChatArea({
         ) : (
           <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-6 py-6">
             {conversation.messages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
+              <ChatMessage
+                key={message.id}
+                message={message}
+                matterId={matterId || conversation?.matter?.id || null}
+                conversationId={conversationId || conversation?.id || null}
+              />
             ))}
 
             {(sending || uploading) && (

@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText, Scale } from "lucide-react";
+import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText, Scale, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+
+import DocumentSourcePanel from "./DocumentSourcePanel";
 
 function formatTime(message) {
   const value = message.createdAt || message.created_at;
@@ -15,35 +17,89 @@ function formatTime(message) {
   }
 }
 
-function SourceCard({ source, index }) {
+function SourceCard({ source, index, matterId, conversationId, onOpenDocument }) {
   const [expanded, setExpanded] = useState(false);
 
   const relevance =
-    typeof source.score === "number"
-      ? Math.round(Math.min(Math.max(source.score, 0), 1) * 100)
+    typeof source.relevancePercent === "number"
+      ? source.relevancePercent
       : null;
+
+  const canOpenDocument = Boolean(
+    source.documentId &&
+      (matterId ||
+        conversationId ||
+        source.matterId ||
+        source.conversationId)
+  );
+  const label = source.displayName || source.title || source.filename || "Source";
+
+  const handleOpen = () => {
+    if (canOpenDocument) {
+      onOpenDocument(source);
+    }
+  };
 
   return (
     <div className="overflow-hidden rounded-xl border border-black/5 bg-white/80">
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition hover:bg-black/[0.02]"
-      >
+      <div className="flex items-start gap-2.5 px-3 py-2.5">
         <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow/30 text-slate-800">
           <BookOpen size={12} />
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="truncate text-[13px] font-medium text-slate-800">
-              {source.title}
-            </p>
+            {canOpenDocument ? (
+              <button
+                type="button"
+                onClick={handleOpen}
+                className="group min-w-0 flex-1 text-left"
+              >
+                <p className="truncate text-[13px] font-medium text-slate-800 underline decoration-slate-300 underline-offset-2 group-hover:text-slate-950 group-hover:decoration-slate-500">
+                  {label}
+                </p>
+                {source.filename && source.filename !== label && (
+                  <p className="mt-0.5 truncate text-[12px] text-slate-500">
+                    {source.filename}
+                  </p>
+                )}
+              </button>
+            ) : (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium text-slate-800">
+                  {label}
+                </p>
+                {source.filename && source.filename !== label && (
+                  <p className="mt-0.5 truncate text-[12px] text-slate-500">
+                    {source.filename}
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="flex shrink-0 items-center gap-1.5 text-slate-400">
+              {canOpenDocument && (
+                <button
+                  type="button"
+                  onClick={handleOpen}
+                  className="rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                  aria-label="Open document"
+                  title="Open full document"
+                >
+                  <ExternalLink size={14} />
+                </button>
+              )}
               {relevance !== null && (
                 <span className="text-[11px] text-slate-500">{relevance}%</span>
               )}
-              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              <button
+                type="button"
+                onClick={() => setExpanded((value) => !value)}
+                className="rounded-md p-1 hover:bg-slate-100"
+                aria-label={expanded ? "Collapse source" : "Expand source"}
+              >
+                {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
             </div>
           </div>
 
@@ -53,7 +109,7 @@ function SourceCard({ source, index }) {
             </p>
           )}
         </div>
-      </button>
+      </div>
 
       {expanded && (
         <div className="space-y-2 border-t border-black/5 px-3 py-2.5">
@@ -63,10 +119,39 @@ function SourceCard({ source, index }) {
             </p>
           )}
 
-          {source.excerpt && (
-            <blockquote className="rounded-lg bg-[#F7F7F8] px-2.5 py-2 text-[12px] leading-5 whitespace-pre-wrap text-slate-700">
-              {source.excerpt}
-            </blockquote>
+          {source.evidence?.length > 1 && (
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              Evidence · {source.evidence.length} passages
+            </p>
+          )}
+
+          {source.evidence?.length > 0 ? (
+            <div className="space-y-2">
+              {source.evidence.map((item, evidenceIndex) => (
+                <blockquote
+                  key={item.sourceId || evidenceIndex}
+                  className="rounded-lg bg-[#F7F7F8] px-2.5 py-2 text-[12px] leading-5 whitespace-pre-wrap text-slate-700"
+                >
+                  {item.excerpt}
+                </blockquote>
+              ))}
+            </div>
+          ) : (
+            source.excerpt && (
+              <blockquote className="rounded-lg bg-[#F7F7F8] px-2.5 py-2 text-[12px] leading-5 whitespace-pre-wrap text-slate-700">
+                {source.excerpt}
+              </blockquote>
+            )
+          )}
+
+          {canOpenDocument && (
+            <button
+              type="button"
+              onClick={handleOpen}
+              className="text-[12px] font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+            >
+              View full document with highlighted passage
+            </button>
           )}
 
           {source.section && (
@@ -101,9 +186,15 @@ function SourceCard({ source, index }) {
   );
 }
 
-export default function ChatMessage({ message }) {
+export default function ChatMessage({
+  message,
+  matterId = null,
+  conversationId = null,
+}) {
   const isUser = message.role === "user";
   const hasError = message.status === "error";
+  const [activeSource, setActiveSource] = useState(null);
+  const displayResources = message.resources || [];
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -112,9 +203,15 @@ export default function ChatMessage({ message }) {
           isUser ? "flex-row-reverse" : ""
         }`}
       >
-        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ffc853]">
-           <Scale size={15} className="text-yellow" />
-         </div>
+        <div
+          className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+            isUser
+              ? "bg-yellow text-white"
+              : "bg-gray-200 text-gray-700"
+          }`}
+        >
+          {isUser ? <User size={14} /> : <Bot size={14} />}
+        </div>
 
         <div
           className={`min-w-0 max-w-[min(100%,42rem)] rounded-3xl px-4 py-3 shadow-sm ${
@@ -150,17 +247,17 @@ export default function ChatMessage({ message }) {
             ) : (
               <div
                 className="
-                  chat-md
-                  [&_p]:my-2.5 [&_p]:first:mt-0 [&_p]:last:mb-0
-                  [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1
-                  [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-[15px] [&_h1]:font-semibold
-                  [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-[15px] [&_h2]:font-semibold
-                  [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-[15px] [&_h3]:font-semibold
-                  [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px]
-                  [&_pre]:my-2.5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-slate-100 [&_pre]:p-3 [&_pre]:text-[13px]
-                  [&_blockquote]:my-2.5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-600
-                  [&_a]:text-slate-900 [&_a]:underline
-                "
+                chat-md
+                [&_p]:my-2.5 [&_p]:first:mt-0 [&_p]:last:mb-0
+                [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1
+                [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-[15px] [&_h1]:font-semibold
+                [&_h2]:mb-2 [&_h2]:mt-3 [&_h2]:text-[15px] [&_h2]:font-semibold
+                [&_h3]:mb-1.5 [&_h3]:mt-2.5 [&_h3]:text-[15px] [&_h3]:font-semibold
+                [&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[13px]
+                [&_pre]:my-2.5 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:bg-slate-100 [&_pre]:p-3 [&_pre]:text-[13px]
+                [&_blockquote]:my-2.5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-600
+                [&_a]:text-slate-900 [&_a]:underline
+              "
               >
                 <ReactMarkdown>{message.content}</ReactMarkdown>
               </div>
@@ -171,18 +268,21 @@ export default function ChatMessage({ message }) {
             <p className="mt-2 text-[12px] text-red-600">{message.error}</p>
           )}
 
-          {!isUser && message.sources?.length > 0 && (
+          {!isUser && displayResources.length > 0 && (
             <div className="mt-4 border-t border-black/5 pt-3">
               <p className="mb-2 text-[11px] font-medium tracking-wide text-slate-500 uppercase">
-                Resources · {message.sources.length}
+                Resources · {displayResources.length}
               </p>
 
               <div className="space-y-1.5">
-                {message.sources.map((source, index) => (
+                {displayResources.map((source, index) => (
                   <SourceCard
-                    key={source.id || index}
+                    key={source.documentId || source.id || `resource-${index}`}
                     source={source}
                     index={index}
+                    matterId={matterId}
+                    conversationId={conversationId}
+                    onOpenDocument={setActiveSource}
                   />
                 ))}
               </div>
@@ -198,6 +298,15 @@ export default function ChatMessage({ message }) {
           </div>
         </div>
       </div>
+
+      {activeSource && (
+        <DocumentSourcePanel
+          source={activeSource}
+          matterId={matterId}
+          conversationId={conversationId}
+          onClose={() => setActiveSource(null)}
+        />
+      )}
     </div>
   );
 }

@@ -160,6 +160,451 @@ function mergeCitationsByFile(citations = []) {
     .sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
 }
 
+function cleanAnswerText(text) {
+  if (!text) return "";
+  let cleaned = text.trim();
+
+  cleaned = cleaned.replace(
+    /\n+\s*(?:#{1,3}\s*)?(?:Sources?|References?|Citations?)\s*:?\s*(?:\n\s*(?:[-*•]\s*)?(?:\[[^\]]*\]|\([^\)]*\)|[^\n]*))*\s*$/i,
+    ""
+  );
+  cleaned = cleaned.replace(
+    /\n+\s*(?:#{1,3}\s*)?(?:Sources?|References?|Citations?)\s*:?\s*\n(?:\s*(?:[-*•]\s*)?(?:\[[^\]]*\]|\([^\)]*\)|[^\S\n]*)\s*\n?)+/gi,
+    ""
+  );
+  cleaned = cleaned.replace(
+    /\n+\s*(?:#{1,3}\s*)?(?:Sources?|References?|Citations?)\s*:?\s*(?:\n\s*[-*•]\s*)*\s*$/i,
+    ""
+  );
+  cleaned = cleaned.replace(
+    /\s*\[Sources?\s+\d+(?:\s*(?:,|and|&)\s*(?:Source\s+)?\d+)+\]/gi,
+    ""
+  );
+  cleaned = cleaned.replace(
+    /\s*\(Sources?\s+\d+(?:\s*(?:,|and|&)\s*(?:Source\s+)?\d+)*\)/gi,
+    ""
+  );
+  cleaned = cleaned.replace(/\s*\[Source\s+\d+\]/gi, "");
+  cleaned = cleaned.replace(
+    /(?:^|\n)\s*(?:#{1,3}\s*)?(?:Sources?|References?|Citations?)\s*:?\s*$/gim,
+    ""
+  );
+  cleaned = cleaned.replace(/[ \t]{2,}/g, " ");
+  cleaned = cleaned.replace(/\s+([.,;:])/g, "$1");
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+  return cleaned.trim();
+}
+
+function normalizeDocumentId(documentId) {
+  if (!documentId) return null;
+  const value = String(documentId).trim().toLowerCase();
+  if (!value) return null;
+
+  const hex = value.replace(/[^0-9a-f]/g, "");
+  if (hex.length === 32) {
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return value;
+}
+
+function recoverDocumentId(documentId, chunkId) {
+  const normalized = normalizeDocumentId(documentId);
+  if (normalized) return normalized;
+  if (!chunkId) return null;
+
+  const match = String(chunkId)
+    .trim()
+    .match(
+      /^([0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12})(?::|\/|$)/
+    );
+  return match ? normalizeDocumentId(match[1]) : null;
+}
+
+function normalizeFilename(filename) {
+  if (!filename) return null;
+  const value = String(filename).trim().toLowerCase();
+  return value || null;
+}
+
+function resourceMergeKey(resource) {
+  // HARD INVARIANT: one document_id = one resource.
+  // Same filename + different document_id remain separate.
+  const docId = normalizeDocumentId(resource.documentId);
+  if (docId) return `doc:${docId}`;
+  return resource.id || `resource-${Math.random()}`;
+}
+
+function normalizePassageText(text) {
+  if (!text) return "";
+  return String(text)
+    .toLowerCase()
+    .replace(/[‑–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function passagesAreNearDuplicates(left, right) {
+  const a = normalizePassageText(left);
+  const b = normalizePassageText(right);
+  if (!a || !b) return false;
+  if (a === b) return true;
+
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  if (shorter.length < 60) return longer.includes(shorter);
+
+  const prefix = shorter.slice(0, Math.min(180, shorter.length));
+  if (longer.startsWith(prefix) || longer.includes(prefix)) {
+    const leftTokens = new Set(shorter.split(" "));
+    const rightTokens = new Set(longer.split(" "));
+    let intersection = 0;
+    for (const token of leftTokens) {
+      if (rightTokens.has(token)) intersection += 1;
+    }
+    const union = new Set([...leftTokens, ...rightTokens]).size;
+    return union > 0 ? intersection / union >= 0.82 : false;
+  }
+  return false;
+}
+
+function offsetsOverlap(leftStart, leftEnd, rightStart, rightEnd) {
+  if (
+    leftStart == null ||
+    leftEnd == null ||
+    rightStart == null ||
+    rightEnd == null
+  ) {
+    return false;
+  }
+  if (leftEnd <= leftStart || rightEnd <= rightStart) return false;
+  const overlap = Math.max(
+    0,
+    Math.min(leftEnd, rightEnd) - Math.max(leftStart, rightStart)
+  );
+  if (overlap <= 0) return false;
+  const shorter = Math.min(leftEnd - leftStart, rightEnd - rightStart);
+  return overlap / shorter >= 0.55;
+}
+
+function dedupeEvidence(evidence = []) {
+  if (evidence.length <= 1) return evidence;
+
+  const ranked = [...evidence].sort(
+    (a, b) => (b.relevancePercent || 0) - (a.relevancePercent || 0)
+  );
+  const kept = [];
+
+  for (const item of ranked) {
+    const duplicate = kept.some(
+      (existing) =>
+        offsetsOverlap(
+          existing.highlightStart,
+          existing.highlightEnd,
+          item.highlightStart,
+          item.highlightEnd
+        ) ||
+        passagesAreNearDuplicates(
+          existing.text || existing.excerpt,
+          item.text || item.excerpt
+        )
+    );
+    if (!duplicate) kept.push(item);
+  }
+
+  const keptSet = new Set(kept);
+  return ranked.filter((item) => keptSet.has(item));
+}
+
+function dedupeResources(resources = []) {
+  const merged = new Map();
+
+  for (const resource of resources) {
+    const key = resourceMergeKey(resource);
+    const docId = normalizeDocumentId(resource.documentId);
+    const existing = merged.get(key);
+
+    if (!existing) {
+      merged.set(key, {
+        ...resource,
+        id: docId ? `resource-${docId}` : resource.id,
+        documentId: docId || resource.documentId,
+        evidence: [...(resource.evidence || [])],
+        evidenceCount: (resource.evidence || []).length,
+      });
+      continue;
+    }
+
+    const seen = new Set(
+      (existing.evidence || []).map(
+        (item) => `${item.chunkId || item.sourceId || item.excerpt || ""}`
+      )
+    );
+
+    for (const item of resource.evidence || []) {
+      const itemKey = `${item.chunkId || item.sourceId || item.excerpt || ""}`;
+      if (!seen.has(itemKey)) {
+        existing.evidence.push(item);
+        seen.add(itemKey);
+      }
+    }
+
+    existing.evidenceCount = existing.evidence.length;
+
+    const nextRel = resource.relevancePercent || 0;
+    const prevRel = existing.relevancePercent || 0;
+    if (nextRel > prevRel) {
+      existing.relevancePercent = resource.relevancePercent;
+      existing.excerpt = resource.excerpt || existing.excerpt;
+      if (docId) {
+        existing.documentId = docId;
+        existing.id = `resource-${docId}`;
+        existing.clickable = true;
+      }
+    }
+
+    if (!existing.filename && resource.filename) {
+      existing.filename = resource.filename;
+    }
+    if (!existing.displayName && resource.displayName) {
+      existing.displayName = resource.displayName;
+      existing.title = resource.displayName || existing.title;
+    }
+
+    existing.evidence = dedupeEvidence(existing.evidence);
+    existing.evidenceCount = existing.evidence.length;
+  }
+
+  return [...merged.values()]
+    .map((resource) => {
+      const evidence = dedupeEvidence(resource.evidence || []);
+      return {
+        ...resource,
+        evidence,
+        evidenceCount: evidence.length,
+        excerpt: resource.excerpt || evidence[0]?.excerpt || null,
+      };
+    })
+    .sort((a, b) => (b.relevancePercent || 0) - (a.relevancePercent || 0));
+}
+
+function mapApiResourcesToUi(resources = []) {
+  const mapped = resources.map((resource, index) => {
+    const documentId =
+      recoverDocumentId(resource.document_id, resource.evidence?.[0]?.chunk_id) ||
+      normalizeDocumentId(resource.document_id);
+
+    const title =
+      resource.display_name ||
+      resource.filename ||
+      resource.law_name ||
+      "Document";
+
+    const metaParts = [];
+    if (resource.author) metaParts.push(resource.author);
+    if (resource.law_name && resource.law_name !== title) {
+      metaParts.push(resource.law_name);
+    }
+    if (resource.court) metaParts.push(resource.court);
+    if (resource.year) metaParts.push(String(resource.year));
+
+    const evidence = dedupeEvidence(
+      (resource.evidence || []).map((item) => ({
+      sourceId: item.source_id,
+      sourceNumber: item.source_number,
+      chunkId: item.chunk_id,
+      chunkIndex: item.chunk_index,
+      excerpt: item.excerpt,
+      text: item.text,
+      highlightStart: item.start_offset ?? null,
+      highlightEnd: item.end_offset ?? null,
+      relevancePercent: item.relevance_percent ?? null,
+    }))
+    );
+
+    const primaryEvidence = evidence[0] || null;
+
+    return {
+      id: documentId
+        ? `resource-${documentId}`
+        : resource.id || `resource-${index}`,
+      documentId: documentId || resource.document_id || null,
+      title,
+      displayName: resource.display_name || null,
+      author: resource.author || null,
+      meta: metaParts.join(" · ") || undefined,
+      excerpt: resource.primary_excerpt || primaryEvidence?.excerpt || null,
+      filename: resource.filename || null,
+      relevancePercent: resource.relevance_percent ?? null,
+      matterId: resource.matter_id || null,
+      conversationId: resource.conversation_id || null,
+      sourceType: resource.source_type || null,
+      scope:
+        resource.source_type === "conversation" || resource.conversation_id
+          ? "conversation"
+          : resource.matter_id
+            ? "matter"
+            : null,
+      evidence,
+      evidenceCount: evidence.length,
+      highlightStart: primaryEvidence?.highlightStart ?? null,
+      highlightEnd: primaryEvidence?.highlightEnd ?? null,
+      text: primaryEvidence?.text || null,
+      clickable: Boolean(documentId || resource.document_id),
+      raw: resource,
+    };
+  });
+
+  return dedupeResources(mapped);
+}
+
+function buildResourcesFromLegacySources(response) {
+  if (!Array.isArray(response.sources) || response.sources.length === 0) {
+    return mapCitationsToSources(response.citations);
+  }
+
+  const grouped = new Map();
+
+  for (const source of response.sources) {
+    const docId = recoverDocumentId(source.document_id, source.chunk_id);
+    const chunkKey = source.chunk_id || source.id;
+    const key = docId || `chunk:${chunkKey}`;
+    const bucket = grouped.get(key) || [];
+    bucket.push(source);
+    grouped.set(key, bucket);
+  }
+
+  return dedupeResources(
+    [...grouped.entries()].map(([key, items]) => {
+      const primary = items[0];
+      const best = [...items].sort(
+        (a, b) => Number(b.relevance || b.score || 0) - Number(a.relevance || a.score || 0)
+      )[0];
+      const docId = recoverDocumentId(best.document_id, best.chunk_id);
+      const title =
+        best.display_name ||
+        best.document_name ||
+        best.filename ||
+        "Document";
+
+      const evidence = items.map((item) => ({
+        sourceId: item.id,
+        sourceNumber: item.source_number,
+        chunkId: item.chunk_id,
+        chunkIndex: item.chunk_index,
+        excerpt: item.excerpt || item.text,
+        text: item.text,
+        highlightStart: item.start_offset ?? null,
+        highlightEnd: item.end_offset ?? null,
+        relevancePercent: item.relevance_percent ?? null,
+      }));
+
+      return {
+        id: docId ? `resource-${docId}` : `resource-${key}`,
+        documentId: docId || best.document_id,
+        title,
+        displayName: best.display_name || null,
+        filename: best.filename || null,
+        excerpt: best.excerpt || evidence[0]?.excerpt || null,
+        relevancePercent: best.relevance_percent ?? null,
+        matterId: best.matter_id || null,
+        conversationId: best.conversation_id || null,
+        sourceType: best.source_type || null,
+        scope:
+          best.source_type === "conversation" || best.conversation_id
+            ? "conversation"
+            : best.matter_id
+              ? "matter"
+              : null,
+        evidence,
+        evidenceCount: evidence.length,
+        highlightStart: evidence[0]?.highlightStart ?? null,
+        highlightEnd: evidence[0]?.highlightEnd ?? null,
+        clickable: Boolean(docId || best.document_id),
+        raw: best,
+      };
+    })
+  );
+}
+
+function resolveResources(response) {
+  // resources[] is the ONLY card source for current API responses.
+  // Fall back to sources/citations only for legacy cached messages
+  // that predate the resources field.
+  if (Object.prototype.hasOwnProperty.call(response, "resources")) {
+    return mapApiResourcesToUi(
+      Array.isArray(response.resources) ? response.resources : []
+    );
+  }
+  return buildResourcesFromLegacySources(response);
+}
+
+function mapApiSourcesToUi(sources = []) {
+  const mapped = sources.map((source, index) => {
+    const title =
+      source.display_name ||
+      source.document_name ||
+      source.filename ||
+      source.law_name ||
+      "Legal source";
+
+    const metaParts = [];
+    if (source.author) metaParts.push(source.author);
+    if (source.section) metaParts.push(source.section);
+    if (source.law_name && source.law_name !== title) {
+      metaParts.push(source.law_name);
+    }
+    if (source.court) metaParts.push(source.court);
+    if (source.year) metaParts.push(String(source.year));
+
+    return {
+      id: source.id || `source-${index}`,
+      sourceNumber: source.source_number ?? index + 1,
+      documentId: source.document_id,
+      title,
+      displayName: source.display_name || null,
+      author: source.author || null,
+      meta: metaParts.join(" · ") || undefined,
+      sections: source.sections || [],
+      section:
+        source.section ||
+        (source.sections?.length
+          ? source.sections.slice(0, 6).join(", ")
+          : undefined),
+      excerpt: source.excerpt || source.text || null,
+      text: source.text || source.excerpt || null,
+      filename: source.filename || null,
+      highlightStart: source.start_offset ?? null,
+      highlightEnd: source.end_offset ?? null,
+      score: source.relevance ?? source.score,
+      relevancePercent:
+        source.relevance_percent ??
+        (typeof source.relevance === "number"
+          ? Math.round(Math.min(Math.max(source.relevance, 0), 1) * 100)
+          : null),
+      matterId: source.matter_id || null,
+      conversationId: source.conversation_id || null,
+      sourceType: source.source_type || null,
+      scope:
+        source.source_type === "conversation" || source.conversation_id
+          ? "conversation"
+          : source.matter_id
+            ? "matter"
+            : null,
+      clickable: Boolean(source.document_id),
+      raw: source,
+    };
+  });
+
+  return mapped;
+}
+
+function resolveSources(response) {
+  if (Array.isArray(response.sources) && response.sources.length > 0) {
+    return mapApiSourcesToUi(response.sources);
+  }
+  return mapCitationsToSources(response.citations);
+}
+
 function mapCitationsToSources(citations = []) {
   return mergeCitationsByFile(citations).map((citation, index) => {
     const title =
@@ -520,13 +965,13 @@ export const chatService = {
       });
 
       const realId = String(response.conversation_id);
-      const sources = mapCitationsToSources(response.citations);
+      const resources = resolveResources(response);
 
       const assistantMessage = {
         id: createId("assistant"),
         role: "assistant",
-        content: response.response,
-        sources,
+        content: cleanAnswerText(response.response),
+        resources,
         createdAt: new Date().toISOString(),
       };
 

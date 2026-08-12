@@ -87,4 +87,41 @@ export const documentService = {
     }
     return uploaded;
   },
+
+  /** Full document text for matter- or conversation-scoped uploads. */
+  async getDocument({ documentId, matterId, conversationId, scope = null }) {
+    if (!documentId) {
+      throw new Error("Document id is required.");
+    }
+
+    if (scope === "conversation") {
+      if (!conversationId) {
+        throw new Error("Conversation id is required for this document.");
+      }
+      return apiRequest(
+        `/documents/conversations/${conversationId}/document/${documentId}`,
+        { method: "GET" }
+      );
+    }
+
+    if (matterId) {
+      return apiRequest(`/matters/${matterId}/document/${documentId}`, {
+        method: "GET",
+      });
+    }
+
+    if (conversationId) {
+      return apiRequest(
+        `/documents/conversations/${conversationId}/document/${documentId}`,
+        { method: "GET" }
+      );
+    }
+
+    throw new Error("Matter or conversation id is required to open document.");
+  },
+
+  /** @deprecated Use getDocument */
+  async getMatterDocument(matterId, documentId) {
+    return this.getDocument({ matterId, documentId, scope: "matter" });
+  },
 };
