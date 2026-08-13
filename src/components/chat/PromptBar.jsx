@@ -78,8 +78,8 @@ export default function PromptBar({
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      <div className="rounded-3xl border border-black/5 bg-white px-3 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+    <div className="mx-auto w-full max-w-5xl">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
         {files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2 px-1 pt-1">
             {files.map((file, index) => (

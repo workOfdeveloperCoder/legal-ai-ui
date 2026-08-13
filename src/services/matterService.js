@@ -87,7 +87,7 @@ export const matterService = {
     const withDocs = await Promise.all(
       matters.map(async (matter) =>{
           try{
-            const documents = await documentService.getMatterDocuments(matter.Id);
+            const documents = await documentService.getMatterDocuments(matter.id);
             return { ...matter, documents };
           }catch(err){
             return { ...matter,documents: []};

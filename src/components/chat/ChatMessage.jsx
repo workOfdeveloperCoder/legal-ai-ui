@@ -106,9 +106,9 @@ export default function ChatMessage({ message }) {
   const hasError = message.status === "error";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`flex w-full max-w-3xl items-start gap-3 ${
+        className={`flex w-full items-start gap-3 ${
           isUser ? "flex-row-reverse" : ""
         }`}
       >
@@ -123,10 +123,10 @@ export default function ChatMessage({ message }) {
         </div>
 
         <div
-          className={`min-w-0 max-w-[min(100%,42rem)] rounded-3xl px-4 py-3 shadow-sm ${
+          className={`min-w-0 rounded-3xl px-4 py-3 shadow-sm ${
             isUser
-              ? "bg-[#FFE2A3] text-slate-800"
-              : "bg-[#F7F8FC] text-slate-800"
+              ? "max-w-[85%] bg-[#FFE2A3] text-slate-800"
+              : "w-full flex-1 bg-white text-slate-800 ring-1 ring-slate-200/70"
           } ${hasError ? "ring-1 ring-red-300" : ""}`}
         >
           <div

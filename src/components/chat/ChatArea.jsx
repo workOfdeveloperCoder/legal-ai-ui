@@ -273,14 +273,14 @@ export default function ChatArea({
 
       <div className="flex-1 overflow-y-auto hide-scrollbar">
         {loadingConversation && !conversation?.messages?.length ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-6 py-8">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-8">
             <div className="h-10 animate-pulse rounded-2xl bg-slate-200/80" />
             <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
           </div>
         ) : !conversation?.messages?.length ? (
           <EmptyState />
         ) : (
-          <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-6 py-6">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-6 py-6">
             {conversation.messages.map((message) => (
               <ChatMessage key={message.id} message={message} />
             ))}
@@ -298,14 +298,14 @@ export default function ChatArea({
         )}
       </div>
 
-      <div className="border-t border-slate-200/80 bg-[#F7F8FC] px-6 py-4">
+      <div className="bg-transparent px-6 pb-5 pt-2">
         {showTrimNotice && (
-          <div className="mx-auto mb-3 w-full max-w-3xl rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-[13px] text-amber-900">
+          <div className="mx-auto mb-3 w-full max-w-5xl rounded-xl border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-[13px] text-amber-900">
             Earlier context was automatically compressed.
           </div>
         )}
         {error && (
-          <div className="mx-auto mb-3 w-full max-w-3xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mx-auto mb-3 w-full max-w-5xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
