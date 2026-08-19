@@ -80,7 +80,6 @@ export default function Profile({ user: initialUser }) {
   async function handleLogout() {
     await logout();
   }
-
   return (
     <div className="min-h-full bg-[#F7F8FC] px-6 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
@@ -100,8 +99,8 @@ export default function Profile({ user: initialUser }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-          >
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
             <LogOut size={16} />
             Sign out
           </button>
