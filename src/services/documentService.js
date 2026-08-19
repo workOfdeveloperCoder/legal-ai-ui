@@ -87,22 +87,4 @@ export const documentService = {
     }
     return uploaded;
   },
-
-  async getMatterDocuments(matterId) {
-     if(!matterId) return [];
-     const data = await apiRequest(`/matters/${matterId}/documents`, {
-        method: "GET",
-     });
-
-     const items = Array.isArray(data) ? data : data?.items || data?.documents ||[];
-     return items.map((doc) => ({
-      id: String(doc.id),
-      filename: doc.filename || doc.original_filename || "Document",
-      status: doc.status || null,
-      processed: doc.processed,
-      vectorized: doc.vectorized,
-      createdAt: doc.created_at || doc.uploaded_at,
-      raw: doc,
-     }));
-  },
 };
