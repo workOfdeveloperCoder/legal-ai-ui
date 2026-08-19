@@ -1,6 +1,8 @@
 import * as Icons from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function QuickActions({ data }) {
+    const navigate = useNavigate();
 
     return (
 <div className="grid ">
@@ -17,7 +19,9 @@ export default function QuickActions({ data }) {
 
                     <button
                         key={action.id}
-                        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg                       "
+                        type="button"
+                        onClick={() => action.href && navigate(action.href)}
+                        className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
                     >
                         <div className="flex items-start gap-4">
 

@@ -152,7 +152,7 @@ export default function Sidebar({
                                         className={
                                             pathname === `/conversation/${conversation.id}`
                                                 ? "text-yellow-400"
-                                                : ""
+                                                : "text-gray-400"
                                         }
                                     />
 

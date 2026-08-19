@@ -1,7 +1,9 @@
 import { Folder } from "lucide-react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 export default function MyMatters({ matters }) {
+    const navigate = useNavigate();
 
     return (
         <div className="h-full min-h-0 flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -15,9 +17,13 @@ export default function MyMatters({ matters }) {
                 </h2>
 
 
-                <div className="rounded-xl text-yellow-500 text-sm p-3">
+                <button
+                    type="button"
+                    onClick={() => navigate("/matters")}
+                    className="rounded-xl text-yellow-500 text-sm p-3"
+                >
                    View All Matters
-                </div>
+                </button>
 
             </div>
 
@@ -37,7 +43,8 @@ export default function MyMatters({ matters }) {
                             }}
                             whileTap={{ scale: 0.98 }}
                             transition={{ duration: 0.15 }}
-                            className="relative flex w-full items-center py-2"
+                            className="relative flex w-full cursor-pointer items-center py-2"
+                            onClick={() => navigate(`/matter/${matter.id}`)}
                         >
                             <Folder
                                 size={22}

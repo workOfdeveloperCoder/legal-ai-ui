@@ -23,10 +23,15 @@ export function normalizeTokenBudget(payload) {
 
   if (!raw || typeof raw !== "object") return null;
 
-  const contextLimit = toNumber(raw.context_limit ?? raw.contextLimit);
+  const contextLimit = toNumber(
+    raw.context_limit ?? raw.contextLimit ?? raw.context_window ?? raw.contextWindow
+  );
   const usagePercent = toNumber(raw.usage_percent ?? raw.usagePercent);
   const totalBudgetUsed = toNumber(
-    raw.total_budget_used ?? raw.totalBudgetUsed ?? raw.input_tokens ?? raw.inputTokens
+    raw.total_budget_used ??
+      raw.totalBudgetUsed ??
+      raw.input_tokens ??
+      raw.inputTokens
   );
 
   // Without a usable percent or limit+used pair, hide indicator.
@@ -52,25 +57,49 @@ export function normalizeTokenBudget(payload) {
     model: raw.model ?? null,
     contextLimit,
     inputTokens: toNumber(raw.input_tokens ?? raw.inputTokens),
-    outputReserved: toNumber(raw.output_reserved ?? raw.outputReserved),
-    totalBudgetUsed,
-    remainingTokens: toNumber(raw.remaining_tokens ?? raw.remainingTokens),
-    usagePercent: clampPercent(computedPercent),
-    trimmed: Boolean(raw.trimmed),
-    conversationTokens: toNumber(
-      raw.conversation_tokens ?? raw.conversationTokens
+    outputReserved: toNumber(
+      raw.output_reserved ??
+        raw.outputReserved ??
+        raw.reserved_output_tokens ??
+        raw.reservedOutputTokens
     ),
-    evidenceTokens: toNumber(raw.evidence_tokens ?? raw.evidenceTokens),
+    totalBudgetUsed,
+    remainingTokens: toNumber(
+      raw.remaining_tokens ??
+        raw.remainingTokens ??
+        (contextLimit != null && totalBudgetUsed != null
+          ? Math.max(0, contextLimit - totalBudgetUsed)
+          : null)
+    ),
+    usagePercent: clampPercent(computedPercent),
+    trimmed: Boolean(raw.trimmed ?? raw.budget_trimmed ?? raw.budgetTrimmed),
+    conversationTokens: toNumber(
+      raw.conversation_tokens ??
+        raw.conversationTokens ??
+        raw.history_tokens ??
+        raw.historyTokens
+    ),
+    evidenceTokens: toNumber(
+      raw.evidence_tokens ??
+        raw.evidenceTokens ??
+        raw.legal_evidence_tokens ??
+        raw.legalEvidenceTokens
+    ),
     matterDocumentTokens: toNumber(
       raw.matter_document_tokens ??
         raw.matterDocumentTokens ??
+        raw.matter_evidence_tokens ??
+        raw.matterEvidenceTokens ??
         raw.matter_tokens ??
         raw.matterTokens ??
         raw.document_tokens ??
         raw.documentTokens
     ),
     systemPromptTokens: toNumber(
-      raw.system_prompt_tokens ?? raw.systemPromptTokens
+      raw.system_prompt_tokens ??
+        raw.systemPromptTokens ??
+        raw.system_tokens ??
+        raw.systemTokens
     ),
     raw,
   };

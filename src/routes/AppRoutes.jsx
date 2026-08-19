@@ -4,6 +4,7 @@ import Dashboard from "../components/dashboard/Dashboard";
 import Matters from "../components/matter/Matters";
 import Matter from "../components/matter/Matter";
 import ChatArea from "../components/chat/ChatArea";
+import Profile from "../components/profile/Profile";
 
 export default function AppRoutes({ user }) {
   const location = useLocation();
@@ -30,6 +31,7 @@ export default function AppRoutes({ user }) {
             element={<ChatArea />}
           />
           <Route path="/matter/:matterId" element={<Matter />} />
+          <Route path="/profile" element={<Profile user={user} />} />
         </Routes>
       </motion.div>
     </AnimatePresence>

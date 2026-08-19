@@ -10,7 +10,12 @@ export default function RecentActivity({ data }) {
         </h2>
        <div className="flex-1 overflow-y-auto hide-scrollbar rounded-3xl border border-slate-200 bg-white shadow-[inset_0_10px_10px_-10px_rgba(0,0,0,0.15),inset_0_-10px_10px_-10px_rgba(0,0,0,0.15)]">
 
-            {(data || []).map(item => (
+            {(data || []).length === 0 ? (
+                <p className="p-6 text-center text-sm text-slate-400">
+                    No activity yet. Start a chat or create a matter.
+                </p>
+            ) : (
+            (data || []).map(item => (
                 <motion.div
                     key={item.id}
                     whileHover={{
@@ -34,7 +39,8 @@ export default function RecentActivity({ data }) {
                     </span>
                 </motion.div>
 
-            ))}
+            ))
+            )}
 
         </div>
 

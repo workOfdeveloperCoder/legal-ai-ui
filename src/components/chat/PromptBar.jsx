@@ -79,7 +79,7 @@ export default function PromptBar({
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="rounded-[28px] border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
+      <div className="rounded-[28px] border border-slate-200/80 bg-white px-3 py-2 shadow-sm flex">
         {files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2 px-1 pt-1">
             {files.map((file, index) => (
@@ -123,10 +123,10 @@ export default function PromptBar({
               ? "Add a question about the attached file(s)..."
               : "Ask anything about Pakistani law..."
           }
-          className="max-h-40 min-h-[44px] w-full resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-[1.55] text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
+          className="max-h-40 min-h-[40px] w-[50%] resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-[1.55] text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
         />
 
-        <div className="flex items-center justify-between pb-1">
+        <div className="flex w-[50%] items-center justify-end pb-1">
           <div className="flex items-center gap-1">
             <input
               ref={fileInputRef}

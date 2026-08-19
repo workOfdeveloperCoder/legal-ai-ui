@@ -93,6 +93,35 @@ describe("normalizeTokenBudget", () => {
     expect(normalizeTokenBudget(legacy)).toBeNull();
   });
 
+  it("maps legal-chatbot TokenUsageMetadata keys", () => {
+    const budget = normalizeTokenBudget({
+      retrieval_metadata: {
+        token_budget: {
+          model: "deepseek-r1:32b",
+          context_window: 32768,
+          input_tokens: 24500,
+          reserved_output_tokens: 4096,
+          history_tokens: 6200,
+          legal_evidence_tokens: 12800,
+          matter_evidence_tokens: 3500,
+          system_tokens: 2000,
+          budget_trimmed: true,
+        },
+      },
+    });
+    expect(budget).not.toBeNull();
+    expect(budget.contextLimit).toBe(32768);
+    expect(budget.totalBudgetUsed).toBe(24500);
+    expect(budget.usagePercent).toBeCloseTo(74.77, 1);
+    expect(budget.outputReserved).toBe(4096);
+    expect(budget.conversationTokens).toBe(6200);
+    expect(budget.evidenceTokens).toBe(12800);
+    expect(budget.matterDocumentTokens).toBe(3500);
+    expect(budget.systemPromptTokens).toBe(2000);
+    expect(budget.trimmed).toBe(true);
+    expect(getContextUsageLevel(budget.usagePercent)).toBe("warning");
+  });
+
   it("derives usage percent from used/limit when percent is absent", () => {
     const budget = normalizeTokenBudget({
       token_budget: {
