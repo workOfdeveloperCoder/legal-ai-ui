@@ -17,7 +17,7 @@ function formatTime(message) {
   }
 }
 
-function SourceCard({ source, index, matterId, conversationId, onOpenDocument }) {
+function SourceCard({ source, onOpenDocument }) {
   const [expanded, setExpanded] = useState(false);
 
   const relevance =
@@ -26,11 +26,7 @@ function SourceCard({ source, index, matterId, conversationId, onOpenDocument })
       : null;
 
   const canOpenDocument = Boolean(
-    source.documentId &&
-      (matterId ||
-        conversationId ||
-        source.matterId ||
-        source.conversationId)
+    source.documentId || source.evidence?.length || source.excerpt
   );
   const label = source.displayName || source.title || source.filename || "Source";
 
@@ -279,9 +275,6 @@ export default function ChatMessage({
                   <SourceCard
                     key={source.documentId || source.id || `resource-${index}`}
                     source={source}
-                    index={index}
-                    matterId={matterId}
-                    conversationId={conversationId}
                     onOpenDocument={setActiveSource}
                   />
                 ))}

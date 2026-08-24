@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
+import { idsForDocumentGet, resolveDocumentGetPath } from "../../lib/documentFetch";
 import { documentService } from "../../services/documentService";
 
 function buildHighlightedParts(fullText, startOffset, endOffset, excerpt) {
@@ -43,16 +44,23 @@ export default function DocumentSourcePanel({
 }) {
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [fullTextNotice, setFullTextNotice] = useState("");
   const [activeEvidenceIndex, setActiveEvidenceIndex] = useState(0);
   const highlightRef = useRef(null);
 
   const title =
-    source.displayName || source.title || source.filename || "Document";
+    document?.display_name ||
+    source.displayName ||
+    source.title ||
+    source.filename ||
+    "Document";
 
-  const resolvedConversationId =
-    conversationId || source.conversationId || null;
-  const resolvedMatterId = matterId || source.matterId || null;
+  const fetchIds = idsForDocumentGet({
+    source,
+    conversationId,
+    matterId,
+  });
+  const documentGetPath = resolveDocumentGetPath(fetchIds);
 
   const evidenceItems =
     source.evidence?.length > 0
@@ -72,25 +80,34 @@ export default function DocumentSourcePanel({
     evidenceItems[activeEvidenceIndex] || evidenceItems[0] || null;
 
   useEffect(() => {
-    if (!source.documentId) return undefined;
-    if (!resolvedConversationId && !resolvedMatterId) return undefined;
+    if (!documentGetPath) {
+      setDocument(null);
+      setFullTextNotice("");
+      setLoading(false);
+      return undefined;
+    }
 
     let cancelled = false;
 
     (async () => {
       setLoading(true);
-      setError("");
+      setFullTextNotice("");
       try {
-        const data = await documentService.getDocument({
-          documentId: source.documentId,
-          matterId: resolvedMatterId,
-          conversationId: resolvedConversationId,
-          scope: source.scope,
-        });
-        if (!cancelled) setDocument(data);
+        const data = await documentService.getDocument(fetchIds);
+        if (cancelled) return;
+        setDocument(data);
+        if (!data?.text) {
+          setFullTextNotice(
+            "Full document text is not available. Showing the retrieved passage."
+          );
+        }
       } catch (err) {
         if (!cancelled) {
-          setError(err?.message || "Failed to load document.");
+          setDocument(null);
+          setFullTextNotice(
+            err?.message ||
+              "Full document text is not available. Showing the retrieved passage."
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -100,12 +117,7 @@ export default function DocumentSourcePanel({
     return () => {
       cancelled = true;
     };
-  }, [
-    source.documentId,
-    source.scope,
-    resolvedConversationId,
-    resolvedMatterId,
-  ]);
+  }, [documentGetPath, fetchIds.documentId, fetchIds.conversationId, fetchIds.matterId, fetchIds.sourceType, fetchIds.scope]);
 
   const parts = useMemo(
     () =>
@@ -128,6 +140,8 @@ export default function DocumentSourcePanel({
     highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [document?.text, parts.highlight, activeEvidenceIndex]);
 
+  const filename = document?.filename || source.filename;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div
@@ -140,8 +154,8 @@ export default function DocumentSourcePanel({
             <p className="truncate text-base font-semibold text-slate-900">
               {title}
             </p>
-            {source.filename && source.filename !== title && (
-              <p className="truncate text-sm text-slate-500">{source.filename}</p>
+            {filename && filename !== title && (
+              <p className="truncate text-sm text-slate-500">{filename}</p>
             )}
             {source.author && (
               <p className="mt-1 text-sm text-slate-600">{source.author}</p>
@@ -161,13 +175,14 @@ export default function DocumentSourcePanel({
           {loading && (
             <p className="text-sm text-slate-500">Loading document…</p>
           )}
-          {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
+
+          {!loading && fullTextNotice && !document?.text && (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              {fullTextNotice}
             </p>
           )}
 
-          {!loading && !error && evidenceItems.length > 0 && (
+          {!loading && evidenceItems.length > 0 && (
             <div className="mb-4 space-y-3">
               <p className="text-[11px] font-medium uppercase tracking-wide text-amber-800">
                 Retrieved evidence
@@ -203,7 +218,7 @@ export default function DocumentSourcePanel({
             </div>
           )}
 
-          {!loading && !error && document?.text && (
+          {!loading && document?.text && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Full document
@@ -223,11 +238,20 @@ export default function DocumentSourcePanel({
             </div>
           )}
 
-          {!loading && !error && !document?.text && activeEvidence?.text && (
+          {!loading && !document?.text && activeEvidence?.text && (
             <pre className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-sans text-sm leading-6 text-slate-800">
               {activeEvidence.text}
             </pre>
           )}
+
+          {!loading &&
+            !document?.text &&
+            !activeEvidence?.excerpt &&
+            !activeEvidence?.text && (
+              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                {fullTextNotice || "This resource has no document text to show."}
+              </p>
+            )}
         </div>
       </div>
     </div>

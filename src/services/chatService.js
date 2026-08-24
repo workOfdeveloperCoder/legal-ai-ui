@@ -407,6 +407,16 @@ function mapApiResourcesToUi(resources = []) {
     }
     if (resource.court) metaParts.push(resource.court);
     if (resource.year) metaParts.push(String(resource.year));
+    const sourceTypeLabel =
+      resource.source_type === "legal" ? "library" : resource.source_type;
+    if (
+      sourceTypeLabel &&
+      !metaParts.some(
+        (part) => String(part).toLowerCase() === String(sourceTypeLabel).toLowerCase()
+      )
+    ) {
+      metaParts.push(sourceTypeLabel);
+    }
 
     const evidence = dedupeEvidence(
       (resource.evidence || []).map((item) => ({
