@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { chatService } from "../../services/chatService";
 import MattersMenu from "../menu/MattersMenu";
+import TokenUsageCard from "../dashboard/TokenUsageCard";
 
 export default function Sidebar({
     conversations,
@@ -243,6 +244,8 @@ export default function Sidebar({
                         Settings
 
                     </button>
+
+                    <TokenUsageCard variant="sidebar" />
 
                 </div>
 

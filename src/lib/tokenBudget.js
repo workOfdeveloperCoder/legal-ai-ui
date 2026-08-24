@@ -7,19 +7,15 @@ const CONTEXT_LIMIT_ERROR_MESSAGE =
   "Your conversation has become too large. Earlier context could not be retained. Please start a new conversation or continue with the current matter.";
 
 /**
- * Normalize token_budget from ChatResponse.
- * Accepts top-level `token_budget` or `retrieval_metadata.token_budget`.
+ * Normalize token usage from ChatResponse.
+ * Prefers top-level `token_usage` (legal-chatbot), then `token_budget`,
+ * then `retrieval_metadata.token_budget`.
  * Returns null when missing/invalid so the UI can hide the indicator.
  */
 export function normalizeTokenBudget(payload) {
   if (!payload || typeof payload !== "object") return null;
 
-  const raw =
-    payload.token_budget ??
-    payload.tokenBudget ??
-    payload.retrieval_metadata?.token_budget ??
-    payload.retrieval_metadata?.tokenBudget ??
-    null;
+  const raw = unwrapBudget(payload);
 
   if (!raw || typeof raw !== "object") return null;
 
@@ -30,6 +26,8 @@ export function normalizeTokenBudget(payload) {
   const totalBudgetUsed = toNumber(
     raw.total_budget_used ??
       raw.totalBudgetUsed ??
+      raw.total_tokens ??
+      raw.totalTokens ??
       raw.input_tokens ??
       raw.inputTokens
   );
@@ -67,12 +65,17 @@ export function normalizeTokenBudget(payload) {
     remainingTokens: toNumber(
       raw.remaining_tokens ??
         raw.remainingTokens ??
+        raw.remaining_input_tokens ??
+        raw.remainingInputTokens ??
         (contextLimit != null && totalBudgetUsed != null
           ? Math.max(0, contextLimit - totalBudgetUsed)
           : null)
     ),
     usagePercent: clampPercent(computedPercent),
     trimmed: Boolean(raw.trimmed ?? raw.budget_trimmed ?? raw.budgetTrimmed),
+    warning: Boolean(raw.warning),
+    overLimit: Boolean(raw.over_limit ?? raw.overLimit),
+    trimmingReason: raw.trimming_reason ?? raw.trimmingReason ?? null,
     conversationTokens: toNumber(
       raw.conversation_tokens ??
         raw.conversationTokens ??
@@ -192,6 +195,25 @@ export function isContextLimitError(error) {
 
 export function getContextLimitErrorMessage() {
   return CONTEXT_LIMIT_ERROR_MESSAGE;
+}
+
+function unwrapBudget(payload) {
+  const usage = payload.token_usage ?? payload.tokenUsage;
+  if (usage && typeof usage === "object") {
+    const breakdown =
+      usage.breakdown && typeof usage.breakdown === "object"
+        ? usage.breakdown
+        : {};
+    return { ...breakdown, ...usage };
+  }
+
+  return (
+    payload.token_budget ??
+    payload.tokenBudget ??
+    payload.retrieval_metadata?.token_budget ??
+    payload.retrieval_metadata?.tokenBudget ??
+    null
+  );
 }
 
 function toNumber(value) {

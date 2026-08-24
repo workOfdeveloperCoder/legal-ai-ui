@@ -134,6 +134,45 @@ describe("normalizeTokenBudget", () => {
     expect(budget?.usagePercent).toBe(25);
     expect(getContextUsageLevel(budget.usagePercent)).toBe("normal");
   });
+
+  it("maps top-level token_usage from legal-chatbot ChatResponse", () => {
+    const budget = normalizeTokenBudget({
+      conversation_id: "abc",
+      response: "Section 54-C can clog discretion.",
+      token_usage: {
+        model: "gpt-4o-mini",
+        provider: "openai",
+        context_window: 128000,
+        input_tokens: 100000,
+        output_tokens: 200,
+        total_tokens: 100200,
+        remaining_input_tokens: 10000,
+        usage_percent: 78.28,
+        warning: false,
+        over_limit: false,
+        budget_trimmed: true,
+        breakdown: {
+          system_tokens: 800,
+          query_tokens: 40,
+          history_tokens: 6200,
+          legal_evidence_tokens: 12800,
+          matter_evidence_tokens: 3500,
+          scaffolding_tokens: 600,
+        },
+      },
+    });
+    expect(budget).not.toBeNull();
+    expect(budget.model).toBe("gpt-4o-mini");
+    expect(budget.contextLimit).toBe(128000);
+    expect(budget.totalBudgetUsed).toBe(100200);
+    expect(budget.remainingTokens).toBe(10000);
+    expect(budget.usagePercent).toBeCloseTo(78.28);
+    expect(budget.trimmed).toBe(true);
+    expect(budget.conversationTokens).toBe(6200);
+    expect(budget.evidenceTokens).toBe(12800);
+    expect(budget.matterDocumentTokens).toBe(3500);
+    expect(budget.systemPromptTokens).toBe(800);
+  });
 });
 
 describe("format helpers", () => {

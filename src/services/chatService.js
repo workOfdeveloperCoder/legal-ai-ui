@@ -777,6 +777,10 @@ export const chatService = {
         method: "GET",
       });
       const detail = mapServerDetail(data);
+      if (cached?.tokenBudget && !detail.tokenBudget) {
+        detail.tokenBudget = cached.tokenBudget;
+        detail.contextTrimmed = Boolean(cached.contextTrimmed);
+      }
 
       if (cached?.messages?.length) {
         detail.messages = detail.messages.map((message) => {
@@ -966,7 +970,8 @@ export const chatService = {
       });
 
       const realId = String(response.conversation_id);
-      const sources = mapCitationsToSources(response.citations);
+      const resources = resolveResources(response);
+      const tokenBudget = normalizeTokenBudget(response);
 
       const assistantMessage = {
         id: createId("assistant"),

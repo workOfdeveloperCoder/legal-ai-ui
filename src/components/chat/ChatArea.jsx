@@ -99,8 +99,8 @@ export default function ChatArea({
   }
 
   async function handleSend(text, files = []) {
-    if (!conversationId || sending || uploading) return;
-    if (!text.trim() && !files.length) return;
+    if (!conversationId || sending || uploading) return null;
+    if (!text.trim() && !files.length) return null;
 
     setError("");
 
@@ -240,6 +240,7 @@ export default function ChatArea({
       ) {
         navigate(`/conversation/${updated.conversationId}`, { replace: true });
       }
+      return updated;
     } catch (err) {
       if (err?.name === "AbortError") {
         setError("Request cancelled.");
@@ -256,6 +257,7 @@ export default function ChatArea({
       } catch {
         // ignore
       }
+      return null;
     } finally {
       setUploading(false);
       setSending(false);
