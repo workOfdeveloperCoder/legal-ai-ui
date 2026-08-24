@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText, Scale, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
+import { withHardBreaks } from "../../lib/streamText";
 import DocumentSourcePanel from "./DocumentSourcePanel";
+import ThinkingBlock from "./ThinkingBlock";
 
 function formatTime(message) {
   const value = message.createdAt || message.created_at;
@@ -193,9 +195,9 @@ export default function ChatMessage({
   const displayResources = message.resources || [];
 
   return (
-    <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex w-full min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`flex w-full items-start gap-3 ${
+        className={`flex w-full min-w-0 items-start gap-3 ${
           isUser ? "flex-row-reverse" : ""
         }`}
       >
@@ -210,14 +212,14 @@ export default function ChatMessage({
         </div>
 
         <div
-          className={`min-w-0 rounded-3xl px-4 py-3 shadow-sm ${
+          className={`min-w-0 overflow-hidden rounded-3xl px-4 py-3 shadow-sm ${
             isUser
               ? "max-w-[85%] bg-[#FFE2A3] text-slate-800"
-              : "w-full flex-1 bg-white text-slate-800 ring-1 ring-slate-200/70"
+              : "max-w-full flex-1 bg-white text-slate-800 ring-1 ring-slate-200/70"
           } ${hasError ? "ring-1 ring-red-300" : ""}`}
         >
           <div
-            className={`text-[15px] leading-[1.65] tracking-[-0.01em] ${
+            className={`min-w-0 max-w-full text-[15px] leading-[1.65] tracking-[-0.01em] break-words [overflow-wrap:anywhere] ${
               isUser ? "whitespace-pre-wrap" : ""
             }`}
           >
@@ -238,12 +240,30 @@ export default function ChatMessage({
                     ))}
                   </div>
                 )}
-                <p className="m-0">{message.content}</p>
+                <p className="m-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                  {message.content}
+                </p>
               </>
             ) : (
-              <div
-                className="
-                chat-md
+              <>
+                {(message.thinkingActive ||
+                  message.thinking ||
+                  (message.streaming && !message.content)) && (
+                  <ThinkingBlock
+                    text={message.thinking || ""}
+                    active={Boolean(
+                      message.thinkingActive ||
+                        (message.streaming && !message.content)
+                    )}
+                    statusLabel={message.statusDetail || ""}
+                    startedAt={message.thinkingStartedAt || null}
+                  />
+                )}
+                {(message.content ||
+                  (message.streaming && !message.thinkingActive)) && (
+                  <div
+                    className="
+                chat-md min-w-0 max-w-full
                 [&_p]:my-2.5 [&_p]:first:mt-0 [&_p]:last:mb-0
                 [&_ul]:my-2.5 [&_ol]:my-2.5 [&_li]:my-1
                 [&_h1]:mb-2 [&_h1]:mt-3 [&_h1]:text-[15px] [&_h1]:font-semibold
@@ -254,9 +274,22 @@ export default function ChatMessage({
                 [&_blockquote]:my-2.5 [&_blockquote]:border-l-2 [&_blockquote]:border-slate-300 [&_blockquote]:pl-3 [&_blockquote]:text-slate-600
                 [&_a]:text-slate-900 [&_a]:underline
               "
-              >
-                <ReactMarkdown>{message.content}</ReactMarkdown>
-              </div>
+                  >
+                    {message.streaming ? (
+                      <>
+                        <div className="min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                          {message.content}
+                          <span className="stream-caret" aria-hidden="true" />
+                        </div>
+                      </>
+                    ) : message.content ? (
+                      <ReactMarkdown>
+                        {withHardBreaks(message.content)}
+                      </ReactMarkdown>
+                    ) : null}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -264,7 +297,7 @@ export default function ChatMessage({
             <p className="mt-2 text-[12px] text-red-600">{message.error}</p>
           )}
 
-          {!isUser && displayResources.length > 0 && (
+          {!isUser && !message.streaming && displayResources.length > 0 && (
             <div className="mt-4 border-t border-black/5 pt-3">
               <p className="mb-2 text-[11px] font-medium tracking-wide text-slate-500 uppercase">
                 Resources · {displayResources.length}

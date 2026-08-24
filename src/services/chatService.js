@@ -10,7 +10,7 @@
  * Server conversations sync across devices for the same user.
  */
 
-import { apiRequest } from "../lib/apiClient";
+import { apiRequest, ApiError } from "../lib/apiClient";
 import { getStoredUser } from "../lib/apiClient";
 import {
   getCachedConversation,
@@ -21,6 +21,8 @@ import {
   upsertCachedConversation,
 } from "../lib/conversationStore";
 import { normalizeTokenBudget } from "../lib/tokenBudget";
+import { readSseStream } from "../lib/sse";
+import { appendStreamChunk } from "../lib/streamText";
 
 function currentUserId() {
   return getStoredUser()?.id || "anonymous";
@@ -1067,6 +1069,286 @@ export const chatService = {
       };
 
       saveCachedDetail(userId, conversationId, failedDetail);
+      throw error;
+    }
+  },
+
+  /**
+   * Stream a reply from POST /api/v1/chat/stream.
+   * onEvent({ event, data, thinking, content, conversationId, streaming })
+   */
+  async streamMessage(conversationId, message, options = {}) {
+    const { matterId = null, documentId = null, signal, onEvent } = options;
+    const userId = currentUserId();
+    const isDraft = isDraftId(conversationId);
+
+    let detail =
+      getCachedConversation(userId, conversationId) ||
+      emptyDetail(conversationId);
+
+    const userMessage = {
+      id: createId("user"),
+      role: "user",
+      content: message,
+      createdAt: new Date().toISOString(),
+      status: "sending",
+    };
+    const assistantMessage = {
+      id: createId("assistant"),
+      role: "assistant",
+      content: "",
+      thinking: "",
+      thinkingActive: true,
+      streaming: true,
+      thinkingStartedAt: Date.now(),
+      statusPhase: "retrieving",
+      statusDetail: "Searching the legal corpus…",
+      createdAt: new Date().toISOString(),
+    };
+
+    detail = {
+      ...detail,
+      messages: [...(detail.messages || []), userMessage, assistantMessage],
+      updatedAt: new Date().toISOString(),
+    };
+
+    const titleFromMessage =
+      message.length > 40 ? `${message.substring(0, 40)}...` : message;
+    const isFirstMessage =
+      (detail.messages?.filter((item) => item.role === "user").length || 0) <= 1;
+
+    const emit = (next) => {
+      detail = next;
+      onEvent?.({
+        event: "update",
+        detail,
+        conversationId: detail.id,
+      });
+    };
+
+    emit(detail);
+
+    upsertCachedConversation(
+      userId,
+      {
+        id: conversationId,
+        title: isFirstMessage ? titleFromMessage : detail.title,
+        lastMessage: message,
+        updatedAt: "Just now",
+        matter: detail.matter || (matterId ? { id: matterId } : null),
+        isDraft,
+      },
+      detail
+    );
+
+    const payload = {
+      message,
+      conversation_id: isDraft ? null : conversationId,
+      matter_id: matterId || detail.matter?.id || null,
+    };
+    if (documentId) payload.document_id = documentId;
+
+    const patchAssistant = (fields) => {
+      const messages = [...(detail.messages || [])];
+      const index = messages.findIndex((item) => item.id === assistantMessage.id);
+      if (index < 0) return;
+      messages[index] = { ...messages[index], ...fields };
+      emit({ ...detail, messages });
+    };
+
+    try {
+      const response = await apiRequest("/chat/stream", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        signal,
+        raw: true,
+      });
+
+      if (!response.ok) {
+        throw await (async () => {
+          try {
+            const body = await response.json();
+            const detailText = body?.detail || body;
+            return new ApiError(
+              typeof detailText === "string"
+                ? detailText
+                : "Streaming chat failed.",
+              { status: response.status, detail: detailText }
+            );
+          } catch (error) {
+            if (error instanceof ApiError) return error;
+            return new ApiError("Streaming chat failed.", {
+              status: response.status,
+            });
+          }
+        })();
+      }
+
+      let liveThinking = "";
+      let liveContent = "";
+      let completePayload = null;
+      let streamError = null;
+
+      await readSseStream(response, ({ event, data }) => {
+        const body = data && typeof data === "object" ? data : {};
+        if (streamError) return;
+        if (event === "started" && body.conversation_id) {
+          const realId = String(body.conversation_id);
+          emit({
+            ...detail,
+            id: realId,
+            conversationId: realId,
+            title: isFirstMessage
+              ? titleFromMessage
+              : detail.title || titleFromMessage,
+          });
+          return;
+        }
+        if (event === "status") {
+          patchAssistant({
+            statusPhase: body.phase || "retrieving",
+            statusDetail: body.detail || "",
+            thinkingActive: true,
+            streaming: true,
+          });
+          return;
+        }
+        if (event === "thinking") {
+          liveThinking = appendStreamChunk(liveThinking, body.text || "");
+          patchAssistant({
+            thinking: liveThinking,
+            thinkingActive: true,
+            streaming: true,
+            statusPhase: "thinking",
+            statusDetail: "",
+          });
+          return;
+        }
+        if (event === "token") {
+          liveContent = appendStreamChunk(liveContent, body.text || "");
+          patchAssistant({
+            content: liveContent,
+            thinking: liveThinking,
+            thinkingActive: false,
+            streaming: true,
+            statusPhase: "answering",
+          });
+          return;
+        }
+        if (event === "complete") {
+          completePayload = body;
+          return;
+        }
+        if (event === "error") {
+          streamError = new ApiError(
+            body.detail || "The assistant is temporarily unavailable.",
+            { status: body.status || 503, detail: body.detail }
+          );
+        }
+      });
+
+      if (streamError) throw streamError;
+
+      const realId = String(
+        completePayload?.conversation_id || detail.id || conversationId
+      );
+      const resources = resolveResources(completePayload || {});
+      const tokenBudget = normalizeTokenBudget(completePayload);
+
+      const nextDetail = {
+        ...detail,
+        id: realId,
+        conversationId: realId,
+        title: isFirstMessage
+          ? titleFromMessage
+          : detail.title || titleFromMessage,
+        matter: detail.matter || (matterId ? { id: matterId } : null),
+        activeDocumentId: documentId || detail.activeDocumentId || null,
+        tokenBudget,
+        contextTrimmed: Boolean(tokenBudget?.trimmed),
+        messages: (detail.messages || []).map((item) => {
+          if (item.id === userMessage.id) return { ...item, status: "sent" };
+          if (item.id === assistantMessage.id) {
+            return {
+              ...item,
+              content: cleanAnswerText(
+                completePayload?.response || liveContent
+              ),
+              thinking: liveThinking,
+              thinkingActive: false,
+              streaming: false,
+              resources,
+              statusPhase: "done",
+            };
+          }
+          return item;
+        }),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const nextMeta = {
+        id: realId,
+        title: nextDetail.title,
+        lastMessage: message,
+        updatedAt: "Just now",
+        matter: nextDetail.matter,
+        isDraft: false,
+      };
+
+      if (isDraft || String(conversationId) !== realId) {
+        replaceCachedConversationId(
+          userId,
+          conversationId,
+          realId,
+          nextMeta,
+          nextDetail
+        );
+      } else {
+        upsertCachedConversation(userId, nextMeta, nextDetail);
+      }
+
+      onEvent?.({ event: "complete", detail: nextDetail, conversationId: realId });
+      return nextDetail;
+    } catch (error) {
+      if (error?.name === "AbortError") {
+        const abortedDetail = {
+          ...detail,
+          messages: (detail.messages || []).map((msg) =>
+            msg.id === userMessage.id
+              ? { ...msg, status: "aborted" }
+              : msg.id === assistantMessage.id
+                ? { ...msg, streaming: false, thinkingActive: false }
+                : msg
+          ),
+        };
+        saveCachedDetail(userId, conversationId, abortedDetail);
+        throw error;
+      }
+
+      const failedDetail = {
+        ...detail,
+        messages: (detail.messages || []).map((msg) =>
+          msg.id === userMessage.id
+            ? {
+                ...msg,
+                status: "error",
+                error:
+                  error?.message ||
+                  "Failed to get a response from Legal Chatbot.",
+              }
+            : msg.id === assistantMessage.id
+              ? {
+                  ...msg,
+                  streaming: false,
+                  thinkingActive: false,
+                  status: "error",
+                  error: error?.message || "Streaming chat failed.",
+                }
+              : msg
+        ),
+      };
+      saveCachedDetail(userId, conversationId, failedDetail);
+      onEvent?.({ event: "error", detail: failedDetail });
       throw error;
     }
   },

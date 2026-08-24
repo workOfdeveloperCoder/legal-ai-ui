@@ -19,13 +19,11 @@ export default function StartChatBanner() {
 
     try {
       const conversation = await chatService.createConversation();
-      const updated = await chatService.sendMessage(
-        conversation.id,
-        input.trim()
-      );
-
+      const message = input.trim();
       setInput("");
-      navigate(`/conversation/${updated.conversationId}`);
+      navigate(`/conversation/${conversation.id}`, {
+        state: { pendingMessage: message },
+      });
     } catch (err) {
       console.error("Failed to send message:", err);
       setError(err?.message || "Failed to start chat.");
@@ -100,7 +98,7 @@ export default function StartChatBanner() {
 
       {loading && (
         <p className="mt-3 text-xs text-slate-400">
-          Waiting for Legal Chatbot response…
+          Opening chat…
         </p>
       )}
     </motion.div>

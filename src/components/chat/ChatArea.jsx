@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { chatService } from "../../services/chatService";
 import { documentService } from "../../services/documentService";
@@ -35,8 +35,11 @@ export default function ChatArea({
 
   const messagesEndRef = useRef(null);
   const abortRef = useRef(null);
+  const sendingRef = useRef(false);
+  const pendingHandledRef = useRef(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const params = useParams();
   const conversationId = conversationIdProp || params.conversationId;
 
@@ -71,7 +74,6 @@ export default function ChatArea({
 
     return () => {
       cancelled = true;
-      abortRef.current?.abort();
     };
   }, [conversationId]);
 
@@ -79,6 +81,7 @@ export default function ChatArea({
     if (!conversationId) return undefined;
 
     const unsub = subscribeConversations(() => {
+      if (sendingRef.current) return;
       const userId = getStoredUser()?.id || "anonymous";
       const cached = getCachedConversation(userId, conversationId);
       if (cached) {
@@ -90,11 +93,22 @@ export default function ChatArea({
   }, [conversationId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: sending ? "auto" : "smooth",
+    });
   }, [conversation?.messages, sending, uploading]);
+
+  useEffect(() => {
+    pendingHandledRef.current = false;
+  }, [conversationId]);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   function handleStop() {
     abortRef.current?.abort();
+    sendingRef.current = false;
     setSending(false);
   }
 
@@ -187,13 +201,38 @@ export default function ChatArea({
       }
 
       setSending(true);
+      sendingRef.current = true;
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const updated = await chatService.sendMessage(activeId, messageText, {
+      const applyStreamDetail = (detail) => {
+        if (!detail) return;
+        let next = { ...detail };
+        if (primaryDocumentId) next.activeDocumentId = primaryDocumentId;
+        if (attachmentNames.length && next.messages?.length) {
+          const messages = [...next.messages];
+          for (let i = messages.length - 1; i >= 0; i -= 1) {
+            if (messages[i].role === "user") {
+              messages[i] = {
+                ...messages[i],
+                attachments: attachmentNames.map((name) => ({
+                  filename: name,
+                })),
+              };
+              break;
+            }
+          }
+          next.messages = messages;
+        }
+        setConversation(next);
+        if (next.tokenBudget) setTokenBudget(next.tokenBudget);
+      };
+
+      const updated = await chatService.streamMessage(activeId, messageText, {
         matterId: matterId || activeConversation?.matter?.id || null,
         documentId: primaryDocumentId,
         signal: controller.signal,
+        onEvent: ({ detail }) => applyStreamDetail(detail),
       });
 
       if (primaryDocumentId && updated) {
@@ -259,21 +298,54 @@ export default function ChatArea({
       }
       return null;
     } finally {
+      sendingRef.current = false;
       setUploading(false);
       setSending(false);
       abortRef.current = null;
     }
   }
 
+  useEffect(() => {
+    const pending = location.state?.pendingMessage;
+    if (
+      !pending ||
+      !conversationId ||
+      conversationIdProp ||
+      loadingConversation ||
+      !conversation ||
+      sending ||
+      uploading ||
+      pendingHandledRef.current
+    ) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      pendingHandledRef.current = true;
+      navigate(location.pathname, { replace: true, state: {} });
+      void handleSend(pending);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [
+    conversation,
+    conversationId,
+    conversationIdProp,
+    loadingConversation,
+    location.pathname,
+    location.state,
+    navigate,
+    sending,
+    uploading,
+  ]);
+
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-w-0 min-h-0 flex-col">
       <SubHeader
         hideHeader={hideHeader}
         title={conversation?.title || "New Conversation"}
         description={null}
       />
 
-      <div className="flex-1 overflow-y-auto hide-scrollbar">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto hide-scrollbar">
         {loadingConversation && !conversation?.messages?.length ? (
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-8">
             <div className="h-10 animate-pulse rounded-2xl bg-slate-200/80" />
@@ -282,7 +354,7 @@ export default function ChatArea({
         ) : !conversation?.messages?.length ? (
           <EmptyState />
         ) : (
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-6 py-6">
+          <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-5 px-6 py-6">
             {conversation.messages.map((message) => (
               <ChatMessage
                 key={message.id}
@@ -292,12 +364,8 @@ export default function ChatArea({
               />
             ))}
 
-            {(sending || uploading) && (
-              <TypingIndicator
-              label = {
-                uploading ? "Uploading and indexing documents..." : "Legal AI is researching..."
-              }
-              />
+            {uploading && (
+              <TypingIndicator label="Uploading and indexing documents..." />
             )}
 
             <div ref={messagesEndRef} />

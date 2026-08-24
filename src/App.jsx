@@ -91,13 +91,13 @@ export default function App() {
         onClose={() => setSidebarOpen(false)}
       />
 
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           user={user}
           onMenuClick={() => setSidebarOpen(true)}
         />
 
-        <div className="flex-1 overflow-y-auto min-[1500px]:overflow-hidden min-[1500px]:min-h-0">
+        <div className="min-w-0 flex-1 overflow-y-auto min-[1500px]:overflow-hidden min-[1500px]:min-h-0">
           <AppRoutes user={user} />
         </div>
       </main>
