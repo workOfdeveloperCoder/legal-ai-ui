@@ -175,6 +175,38 @@ export function saveCachedDetail(userId, conversationId, detail, { emit = true }
   writeStore(userId, store, { emit });
 }
 
+export function removeCachedConversation(userId, conversationId) {
+  const store = readStore(userId);
+  const id = String(conversationId);
+  store.conversations = store.conversations.filter(
+    (item) => String(item.id) !== id
+  );
+  if (store.details[id]) {
+    delete store.details[id];
+  }
+  writeStore(userId, store);
+}
+
+export function renameCachedConversation(userId, conversationId, title) {
+  const store = readStore(userId);
+  const id = String(conversationId);
+  const cleaned = String(title || "").trim() || "New Conversation";
+
+  store.conversations = store.conversations.map((item) =>
+    String(item.id) === id ? { ...item, title: cleaned } : item
+  );
+
+  if (store.details[id]) {
+    store.details[id] = {
+      ...store.details[id],
+      title: cleaned,
+    };
+  }
+
+  writeStore(userId, store);
+  return cleaned;
+}
+
 export function clearCachedConversations(userId) {
   localStorage.removeItem(storageKey(userId));
   window.dispatchEvent(new Event(CHANGE_EVENT));

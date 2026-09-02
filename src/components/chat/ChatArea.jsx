@@ -13,6 +13,7 @@ import {
   getContextLimitErrorMessage,
   isContextLimitError,
 } from "../../lib/tokenBudget";
+import { isUuid } from "../../lib/documentFetch";
 
 import ChatMessage from "./ChatMessage";
 import EmptyState from "./EmptyState";
@@ -42,6 +43,9 @@ export default function ChatArea({
   const location = useLocation();
   const params = useParams();
   const conversationId = conversationIdProp || params.conversationId;
+
+  const resolvedMatterId =
+    matterId || conversation?.matter?.id || conversation?.matterId || null;
 
   useEffect(() => {
     setShowTrimNotice(false);
@@ -112,9 +116,16 @@ export default function ChatArea({
     setSending(false);
   }
 
-  async function handleSend(text, files = []) {
+  async function handleSend(text, files = [], sendOptions = {}) {
     if (!conversationId || sending || uploading) return null;
     if (!text.trim() && !files.length) return null;
+
+    const quickAction = sendOptions.quickAction || null;
+    const webSearch = Boolean(sendOptions.webSearch);
+    const forcedDocumentId = isUuid(sendOptions.documentId)
+      ? sendOptions.documentId
+      : null;
+    const forcedDocumentName = sendOptions.filename || null;
 
     setError("");
 
@@ -132,7 +143,9 @@ export default function ChatArea({
         : "");
 
     const documentTrigger =
-      /\b(summarize|summarise|summary|this document|uploaded document|uploaded file|attached (file|document)|this (pdf|agreement|contract)|analyze this|analyse this)\b/i.test(
+      Boolean(quickAction) ||
+      Boolean(forcedDocumentId) ||
+      /\b(summarize|summarise|summary|this document|uploaded document|uploaded file|attached (file|document)|this (pdf|agreement|contract)|analyze this|analyse this|analyze the uploaded|analyse the uploaded|key issues|explain)\b/i.test(
         messageText
       );
 
@@ -152,9 +165,9 @@ export default function ChatArea({
     }));
 
     try {
-      let primaryDocumentId = null;
+      let primaryDocumentId = forcedDocumentId || null;
+      let uploadedDocs = [];
 
-      // Conversation uploads must target a real conversation id.
       if (files.length) {
         setUploading(true);
         activeId = await chatService.ensureServerConversation(activeId, {
@@ -167,13 +180,13 @@ export default function ChatArea({
           navigate(`/conversation/${activeId}`, { replace: true });
         }
 
-        const uploaded = await documentService.uploadManyToConversation(
+        uploadedDocs = await documentService.uploadManyToConversation(
           activeId,
           files
         );
-        primaryDocumentId = uploaded[0]?.id || null;
+        primaryDocumentId = uploadedDocs[0]?.id || primaryDocumentId;
 
-        const failed = uploaded.filter(
+        const failed = uploadedDocs.filter(
           (doc) => doc && (doc.vectorized === false || doc.processed === false)
         );
         if (failed.length) {
@@ -182,15 +195,17 @@ export default function ChatArea({
           );
         }
 
-        // Remember latest upload for follow-up document questions in this chat.
         setConversation((prev) => ({
           ...(prev || { id: activeId, messages: [] }),
           id: activeId,
           activeDocumentId: primaryDocumentId,
+          activeDocumentName:
+            uploadedDocs[0]?.filename || files[0]?.name || null,
         }));
 
         setUploading(false);
       } else if (
+        !primaryDocumentId &&
         documentTrigger &&
         (activeConversation?.activeDocumentId || conversation?.activeDocumentId)
       ) {
@@ -198,6 +213,28 @@ export default function ChatArea({
           activeConversation?.activeDocumentId ||
           conversation?.activeDocumentId ||
           null;
+      }
+
+      // Corpus / web resource ids are not upload UUIDs — never pin them.
+      if (primaryDocumentId && !isUuid(primaryDocumentId)) {
+        primaryDocumentId = null;
+      }
+
+      if (primaryDocumentId) {
+        setConversation((prev) =>
+          prev
+            ? {
+                ...prev,
+                activeDocumentId: primaryDocumentId,
+                activeDocumentName:
+                  forcedDocumentName ||
+                  uploadedDocs[0]?.filename ||
+                  files[0]?.name ||
+                  prev.activeDocumentName ||
+                  null,
+              }
+            : prev
+        );
       }
 
       setSending(true);
@@ -208,15 +245,23 @@ export default function ChatArea({
       const applyStreamDetail = (detail) => {
         if (!detail) return;
         let next = { ...detail };
-        if (primaryDocumentId) next.activeDocumentId = primaryDocumentId;
+        if (primaryDocumentId) {
+          next.activeDocumentId = primaryDocumentId;
+          next.activeDocumentName =
+            uploadedDocs[0]?.filename ||
+            files[0]?.name ||
+            next.activeDocumentName ||
+            null;
+        }
         if (attachmentNames.length && next.messages?.length) {
           const messages = [...next.messages];
           for (let i = messages.length - 1; i >= 0; i -= 1) {
             if (messages[i].role === "user") {
               messages[i] = {
                 ...messages[i],
-                attachments: attachmentNames.map((name) => ({
-                  filename: name,
+                attachments: files.map((file, index) => ({
+                  filename: file.name,
+                  id: uploadedDocs[index]?.id || null,
                 })),
               };
               break;
@@ -231,12 +276,19 @@ export default function ChatArea({
       const updated = await chatService.streamMessage(activeId, messageText, {
         matterId: matterId || activeConversation?.matter?.id || null,
         documentId: primaryDocumentId,
+        quickAction,
+        webSearch,
         signal: controller.signal,
         onEvent: ({ detail }) => applyStreamDetail(detail),
       });
 
       if (primaryDocumentId && updated) {
         updated.activeDocumentId = primaryDocumentId;
+        updated.activeDocumentName =
+          uploadedDocs[0]?.filename ||
+          files[0]?.name ||
+          updated.activeDocumentName ||
+          null;
       }
 
       if (attachmentNames.length && updated?.messages?.length) {
@@ -245,8 +297,9 @@ export default function ChatArea({
           if (messages[i].role === "user") {
             messages[i] = {
               ...messages[i],
-              attachments: attachmentNames.map((name) => ({
-                filename: name,
+              attachments: files.map((file, index) => ({
+                filename: file.name,
+                id: uploadedDocs[index]?.id || null,
               })),
             };
             break;
@@ -307,6 +360,10 @@ export default function ChatArea({
 
   useEffect(() => {
     const pending = location.state?.pendingMessage;
+    const pendingQuickAction = location.state?.pendingQuickAction || null;
+    const pendingWebSearch = Boolean(location.state?.pendingWebSearch);
+    const pendingDocumentId = location.state?.pendingDocumentId || null;
+    const pendingDocumentName = location.state?.pendingDocumentName || null;
     if (
       !pending ||
       !conversationId ||
@@ -322,7 +379,12 @@ export default function ChatArea({
     const timer = setTimeout(() => {
       pendingHandledRef.current = true;
       navigate(location.pathname, { replace: true, state: {} });
-      void handleSend(pending);
+      void handleSend(pending, [], {
+        quickAction: pendingQuickAction,
+        webSearch: pendingWebSearch,
+        documentId: pendingDocumentId,
+        filename: pendingDocumentName,
+      });
     }, 0);
     return () => clearTimeout(timer);
   }, [
@@ -336,6 +398,11 @@ export default function ChatArea({
     sending,
     uploading,
   ]);
+
+  async function handleEmptyAction({ message, quickAction, webSearch }) {
+    if (!message) return;
+    await handleSend(message, [], { quickAction, webSearch });
+  }
 
   return (
     <div className="flex h-full min-w-0 min-h-0 flex-col">
@@ -352,14 +419,14 @@ export default function ChatArea({
             <div className="h-16 animate-pulse rounded-2xl bg-slate-100" />
           </div>
         ) : !conversation?.messages?.length ? (
-          <EmptyState />
+          <EmptyState onSelectAction={handleEmptyAction} />
         ) : (
           <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-5 px-6 py-6">
             {conversation.messages.map((message) => (
               <ChatMessage
                 key={message.id}
                 message={message}
-                matterId={matterId || conversation?.matter?.id || null}
+                matterId={resolvedMatterId}
                 conversationId={conversationId || conversation?.id || null}
               />
             ))}

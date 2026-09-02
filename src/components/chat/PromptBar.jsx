@@ -1,4 +1,4 @@
-import { Paperclip, Mic, ArrowUp, Square, X, FileText } from "lucide-react";
+import { Paperclip, Mic, ArrowUp, Square, X, FileText, Globe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   ACCEPTED_UPLOAD_TYPES,
@@ -6,6 +6,7 @@ import {
   MAX_UPLOAD_BYTES,
 } from "../../services/documentService";
 import { MAX_STT_SECONDS, startWavRecorder } from "../../lib/recordWav";
+import { getWebSearchSettings } from "../../lib/webSearchSettings";
 import {
   describeVoiceError,
   transcribeWav,
@@ -43,6 +44,9 @@ export default function PromptBar({
   const [dictating, setDictating] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const [bars, setBars] = useState(() => Array(WAVE_BARS).fill(0.12));
+  const [webSearchAvailable, setWebSearchAvailable] = useState(true);
+  const [webSearch, setWebSearch] = useState(false);
+  const [webSearchProvider, setWebSearchProvider] = useState(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
   const recorderRef = useRef(null);
@@ -52,6 +56,20 @@ export default function PromptBar({
   const busy = loading || uploading;
   const voiceBusy = dictating || transcribing;
   const canSend = Boolean(input.trim() || files.length) && !busy && !voiceBusy;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const settings = await getWebSearchSettings();
+      if (cancelled) return;
+      setWebSearchAvailable(settings.enabled);
+      setWebSearchProvider(settings.provider);
+      if (!settings.enabled) setWebSearch(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!dictating) return undefined;
@@ -130,11 +148,12 @@ export default function PromptBar({
     if (!canSend) return;
     const text = input.trim();
     const attachments = [...files];
+    const useWebSearch = webSearchAvailable && webSearch;
     setInput("");
     setFiles([]);
     setAttachError("");
     setDictateError("");
-    await onSend?.(text, attachments);
+    await onSend?.(text, attachments, { webSearch: useWebSearch });
   }
 
   const handleKeyDown = (e) => {
@@ -318,6 +337,26 @@ export default function PromptBar({
             >
               <Paperclip size={16} />
             </button>
+            {webSearchAvailable && (
+              <button
+                type="button"
+                disabled={busy || voiceBusy}
+                onClick={() => setWebSearch((prev) => !prev)}
+                title={
+                  webSearch
+                    ? `Web search on${webSearchProvider ? ` (${webSearchProvider})` : ""}`
+                    : "Include live web search"
+                }
+                className={`flex h-8 items-center gap-1 rounded-lg px-2 text-[12px] transition disabled:opacity-50 ${
+                  webSearch
+                    ? "bg-slate-900 text-white hover:bg-black"
+                    : "text-slate-500 hover:bg-slate-100"
+                }`}
+              >
+                <Globe size={14} />
+                <span className="hidden sm:inline">Web</span>
+              </button>
+            )}
             <ContextUsageIndicator tokenBudget={tokenBudget} />
           </div>
 

@@ -1,51 +1,58 @@
 # Project Progress Log
 
 ## Last Updated
-Monday, Aug 24, 2026 (~10:47 PM PKT)
+Tuesday, Aug 25, 2026 — ~7:10 PM (UTC+5)
 
 ## Current State
-- Streamed answers keep word spaces and wrap inside the bubble (`overflow-wrap: anywhere`). While tokens arrive, text is shown as pre-wrapped plain text so incomplete markdown cannot glue words or blow the layout.
-- Dashboard “ask anything” creates a draft, opens the conversation, then auto-sends so thinking/tokens appear on the chat screen instead of blocking on the banner.
-- Matter details still show chat cards from `GET /matters/{id}/conversations`.
-- Documents count uses `GET /matters/{id}/documents`.
-- Chat composer still shows **Context %** from backend usage metadata.
-- Sidebar **Token Usage** uses the open chat's `token_usage` (or `GET /llm/status` at 0% before any send).
-- Prompt mic is ChatGPT **dictate**: record in the composer → `POST /voice/transcribe` → text is inserted into the input.
-- Resource cards still read `resources[]` on the completed stream payload.
+- Branch: `feature/yasir`
+- Contract analysis UI wired into chat
+- Sidebar conversation menu: **Rename** + **Delete** call `PATCH/DELETE /conversations/{id}`
 
 ## What Was Done This Session
-- Wired `chatService.streamMessage` to `POST /chat/stream` and parse SSE (`started`, `status`, `thinking`, `token`, `complete`, `error`, keepalives).
-- Chat transcript shows a ChatGPT-style thinking panel (shimmer + elapsed time) then live answer tokens.
-- Fixed streamed answers overflowing the bubble and gluing words together (wrap + space joining + pre-wrap while streaming).
-- Cache subscribe is ignored while a stream is in flight so token updates are not overwritten.
-- Vite `/api` proxy read/write timeout is 3600s so a long R1 think phase is not cut at 120s when the UI is proxied.
-- Dashboard start-chat navigates immediately with `pendingMessage`; ChatArea sends after load.
-- SSE parser unit tests added (`src/lib/sse.test.js`). Vitest: **35 passed**.
+- Wired sidebar Rename/Delete in `MattersMenu.jsx`
+- Added `chatService.renameConversation` / `deleteConversation`
+- Cache helpers `renameCachedConversation` / `removeCachedConversation`
+- Backend: `PATCH` + `DELETE /api/v1/conversations/{id}` (service methods already existed)
+
+## Next Steps
+1. Restart LegalGPT API so PATCH/DELETE routes load
+2. Hover a chat → ⋯ → Rename / Delete
+
+## Current State
+- Branch: `feature/yasir`
+- Contract analysis UI is wired into chat: clause cards, review table, playbook findings, redline HTML, DOCX download
+- Empty-state and dashboard quick actions load from `GET /chat/quick-actions` (with offline fallback)
+- Chat send/stream passes `quick_action` / `web_search` when a card is clicked
+- Artifacts stay in the client conversation cache after stream complete
+
+## What Was Done This Session
+- Added `src/services/contractsService.js` (quick actions, export blob download, artifact pick helpers)
+- Added `src/components/chat/ContractArtifacts.jsx` (clause cards, review table, playbook, redline + DOCX)
+- Mapped `clauseCards` / `reviewTable` / `playbookReview` / `redline` in `chatService` send + stream complete
+- EmptyState shows 6 catalog cards + Contract tools (review table / playbook / redline)
+- Dashboard QuickActions start a draft chat with `pendingMessage` + `pendingQuickAction`
+- ChatArea forwards pending quick action into `streamMessage`
 
 ### Files created/modified
-- Created: `src/lib/sse.js`, `src/lib/sse.test.js`, `src/components/chat/ThinkingBlock.jsx`
-- Modified: `src/services/chatService.js`, `src/components/chat/ChatArea.jsx`, `src/components/chat/ChatMessage.jsx`, `src/components/dashboard/StartChatBanner.jsx`, `src/index.css`, `vite.config.js`
+- Created: `src/services/contractsService.js`, `src/components/chat/ContractArtifacts.jsx`
+- Modified: `src/services/chatService.js`, `src/services/dashboardService.js`, `src/components/chat/ChatMessage.jsx`, `src/components/chat/ChatArea.jsx`, `src/components/chat/EmptyState.jsx`, `src/components/dashboard/QuickActions.jsx`, `PROGRESS.md`
 
 ## In Progress / Half Done
-- Profile is view-only; no update-profile or change-password API yet.
-- Live `/voice/transcribe` still depends on a reachable backend.
-- Browser E2E of thinking + token stream still needs a signed-in session against a live legal-chatbot (R1 can take minutes).
-- Restart `npm run dev` so the 3600s proxy timeout is picked up.
+- Browser E2E against a live legal-chatbot with a real contract upload not verified in this session
+- Vitest could not run here due to local sandbox EPERM on `node_modules/.vite-temp`
 
 ## Next Steps (Do This First When You Return)
-1. Restart `npm run dev` on `feature/waqar`.
-2. Open a chat and ask something like “What is Section 54-c?”
-3. Confirm: shimmer **Thinking** / “Searching the legal corpus…” appears, then tokens stream, then the panel collapses to “Thought for Ns”.
-4. Stop should abort the SSE request.
+1. Restart API (`pip install -r requirements.txt` if needed) and `npm run dev` on `feature/yasir`
+2. Upload a contract → **Analyze a Contract** → confirm clause cards + DOCX
+3. Try **Playbook Review**, **Redline**, **Review Table** from Contract tools
+4. Confirm dashboard quick-action cards open a chat and auto-send with the slug
 
 ## Known Issues / Blockers
-- DeepSeek R1 32B can think for several minutes before the first token; the UI now shows that phase instead of a frozen spinner.
-- If Nginx sits in front of the API, it still needs `proxy_read_timeout 3600s` (legal-chatbot `docs/PRODUCTION.md`).
-- legal-chatbot has **no** GET for library/legal corpus full text. Those cards can only show `resources[].evidence` excerpts until the backend adds an endpoint.
-- Dictation is WAV ≤ 45s (backend limit). It is not live streaming STT.
+- Artifacts are client-cache only; reloading from `GET /conversations/{id}` does not restore clause cards unless they were cached
+- Document-required actions still ask for upload when no file is attached (by design)
 
 ## Key Decisions & Context
-- Do not write localStorage on every token (too chatty + cache subscribe races). Persist at stream start and on complete.
-- Thinking text is client-cache only; the conversation GET from the server does not return the hidden think trace.
-- Prefer `ChatResponse.token_usage`; keep `retrieval_metadata.token_budget` as fallback.
-- Resource cards are driven by `response.resources` only (no markdown citation parsing).
+- Match existing yellow/slate chat bubble styling rather than a new design system
+- Hidden contract tools are shown under EmptyState even though they are not in the 6-card API catalog
+- Export uses `POST /contracts/export` with a blob download
+---

@@ -138,4 +138,14 @@ export const documentService = {
       updatedAt: item.updated_at,
     }));
   },
+
+  async deleteMatterDocument(matterId, documentId) {
+    if (!matterId || !documentId) {
+      throw new Error("matterId and documentId are required.");
+    }
+    await apiRequest(`/matters/${matterId}/document/${documentId}`, {
+      method: "DELETE",
+    });
+    return { id: String(documentId) };
+  },
 };

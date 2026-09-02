@@ -1,10 +1,46 @@
-import { useState } from "react";
-import { Bot, User, BookOpen, ChevronDown, ChevronUp, FileText, Scale, ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Bot,
+  User,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  ExternalLink,
+  Volume2,
+  Square,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 import { withHardBreaks } from "../../lib/streamText";
+import {
+  describeVoiceError,
+  getVoiceStatus,
+  playSpeech,
+  stopSpeech,
+} from "../../services/voiceService";
 import DocumentSourcePanel from "./DocumentSourcePanel";
 import ThinkingBlock from "./ThinkingBlock";
+
+let ttsReadyCache = null;
+let ttsReadyInflight = null;
+
+async function loadTtsReady() {
+  if (ttsReadyCache !== null) return ttsReadyCache;
+  if (ttsReadyInflight) return ttsReadyInflight;
+  ttsReadyInflight = (async () => {
+    try {
+      const status = await getVoiceStatus();
+      ttsReadyCache = Boolean(status?.tts_ready ?? status?.ttsReady);
+    } catch {
+      ttsReadyCache = false;
+    } finally {
+      ttsReadyInflight = null;
+    }
+    return ttsReadyCache;
+  })();
+  return ttsReadyInflight;
+}
 
 function formatTime(message) {
   const value = message.createdAt || message.created_at;
@@ -192,7 +228,54 @@ export default function ChatMessage({
   const isUser = message.role === "user";
   const hasError = message.status === "error";
   const [activeSource, setActiveSource] = useState(null);
+  const [ttsReady, setTtsReady] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [speakError, setSpeakError] = useState("");
+  const speakAbortRef = useRef(null);
   const displayResources = message.resources || [];
+
+  useEffect(() => {
+    if (isUser) return undefined;
+    let cancelled = false;
+    (async () => {
+      const ready = await loadTtsReady();
+      if (!cancelled) setTtsReady(ready);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isUser]);
+
+  useEffect(() => {
+    return () => {
+      speakAbortRef.current?.abort();
+      stopSpeech();
+    };
+  }, []);
+
+  async function handleSpeak() {
+    if (!message.content || message.streaming) return;
+    if (speaking) {
+      speakAbortRef.current?.abort();
+      stopSpeech();
+      setSpeaking(false);
+      return;
+    }
+    setSpeakError("");
+    setSpeaking(true);
+    const controller = new AbortController();
+    speakAbortRef.current = controller;
+    try {
+      await playSpeech(message.content, { signal: controller.signal });
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        setSpeakError(describeVoiceError(error));
+      }
+    } finally {
+      setSpeaking(false);
+      speakAbortRef.current = null;
+    }
+  }
 
   return (
     <div className={`flex w-full min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
@@ -289,6 +372,38 @@ export default function ChatMessage({
                     ) : null}
                   </div>
                 )}
+                {!message.streaming &&
+                  !message.content &&
+                  !hasError &&
+                  !message.thinkingActive && (
+                    <p className="m-0 text-[14px] leading-6 text-slate-600">
+                      {displayResources.length > 0 ? (
+                        <>
+                          No answer text was returned, but{" "}
+                          <span className="font-medium text-slate-800">
+                            {displayResources.length} resource
+                            {displayResources.length === 1 ? "" : "s"}
+                          </span>{" "}
+                          were retrieved — open them below. If this keeps
+                          happening, retry or ask{" "}
+                          <span className="font-medium text-slate-800">
+                            section 54-C Electricity Act 1910
+                          </span>
+                          .
+                        </>
+                      ) : (
+                        <>
+                          No visible answer was returned. The model may have
+                          spent its budget on hidden reasoning — try again, or
+                          ask more specifically (e.g.{" "}
+                          <span className="font-medium text-slate-800">
+                            section 54-C Electricity Act 1910
+                          </span>
+                          ).
+                        </>
+                      )}
+                    </p>
+                  )}
               </>
             )}
           </div>
@@ -312,6 +427,27 @@ export default function ChatMessage({
                   />
                 ))}
               </div>
+            </div>
+          )}
+
+          {!isUser && !message.streaming && message.content && ttsReady && (
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void handleSpeak()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] font-medium text-slate-700 hover:bg-slate-100"
+                title={speaking ? "Stop speaking" : "Speak answer"}
+              >
+                {speaking ? (
+                  <Square size={11} fill="currentColor" />
+                ) : (
+                  <Volume2 size={13} />
+                )}
+                {speaking ? "Stop" : "Speak"}
+              </button>
+              {speakError && (
+                <span className="text-[11px] text-rose-600">{speakError}</span>
+              )}
             </div>
           )}
 

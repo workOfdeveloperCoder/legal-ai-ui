@@ -6,9 +6,10 @@ import {
     Scale,
     MoreHorizontal,
     LayoutDashboard,
+    Pin,
 } from "lucide-react";
 import { motion, LayoutGroup } from "framer-motion";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { chatService } from "../../services/chatService";
 import MattersMenu from "../menu/MattersMenu";
@@ -25,6 +26,16 @@ export default function Sidebar({
 
     const navigate = useNavigate();
     const { pathname } = useLocation();
+
+    const sortedConversations = useMemo(() => {
+        const list = Array.isArray(conversations) ? [...conversations] : [];
+        list.sort((a, b) => {
+            const pinDelta = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+            if (pinDelta !== 0) return pinDelta;
+            return 0;
+        });
+        return list;
+    }, [conversations]);
 
     function openConversation(conversation) {
         onSelect?.(conversation.id);
@@ -126,7 +137,7 @@ export default function Sidebar({
 
                     <div className="mt-3 min-h-0 flex-1 overflow-y-auto hide-scrollbar">
 
-                        {conversations.map((conversation) => (
+                        {sortedConversations.map((conversation) => (
                             <motion.div
                                 key={conversation.id}
                                 layout
@@ -148,6 +159,12 @@ export default function Sidebar({
                                 )}
 
                                 <div className="relative z-10 flex items-center gap-3 px-4 py-3">
+                                    {conversation.isPinned ? (
+                                        <Pin
+                                            size={14}
+                                            className="shrink-0 text-yellow-400"
+                                        />
+                                    ) : (
                                     <MessageSquare
                                         size={16}
                                         className={
@@ -156,6 +173,7 @@ export default function Sidebar({
                                                 : "text-gray-400"
                                         }
                                     />
+                                    )}
 
                                 <div className="min-w-0 flex-1">
 
@@ -195,6 +213,7 @@ export default function Sidebar({
                         <MattersMenu
                             selectedConversation={selectedConversation}
                             onClose={() => setSelectedConversation(null)}
+                            onConversationsChange={onConversationsChange}
                         />
                     </div>
 

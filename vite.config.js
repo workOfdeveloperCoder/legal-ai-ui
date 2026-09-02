@@ -7,7 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const apiProxyTarget =
-    env.API_PROXY_TARGET || env.VITE_API_PROXY_TARGET || "http://localhost:8000";
+    env.API_PROXY_TARGET || env.VITE_API_PROXY_TARGET || "http://127.0.0.1:8001";
 
   return {
     plugins: [react(), tailwindcss()],
@@ -18,6 +18,17 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           timeout: 3_600_000,
           proxyTimeout: 3_600_000,
+          // Keep SSE open while the local model thinks for minutes.
+          configure: (proxy) => {
+            proxy.on("proxyRes", (proxyRes) => {
+              const ct = proxyRes.headers["content-type"] || "";
+              if (String(ct).includes("text/event-stream")) {
+                proxyRes.headers["cache-control"] = "no-cache, no-transform";
+                proxyRes.headers["x-accel-buffering"] = "no";
+                delete proxyRes.headers["content-length"];
+              }
+            });
+          },
         },
       },
     },

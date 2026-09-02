@@ -5,6 +5,7 @@
 
 import { apiRequest } from "../lib/apiClient";
 import { chatService } from "./chatService";
+import { getQuickActions } from "./contractsService";
 import { matterService } from "./matterService";
 
 const MOCK_API = import.meta.env.VITE_MOCK_API_URL || "";
@@ -61,14 +62,30 @@ function mapActivity(item) {
   };
 }
 
+function mapChatQuickActions(payload) {
+  const list = payload?.quickActions || payload?.quick_actions || [];
+  return list.map((item) => ({
+    id: item.slug || item.id,
+    slug: item.slug,
+    title: item.title,
+    description: item.description,
+    icon: item.icon || "Sparkles",
+    prompt: item.prompt,
+    enablesWebSearch: item.enablesWebSearch ?? item.enables_web_search ?? false,
+    requiresDocument: item.requiresDocument ?? item.requires_document ?? false,
+  }));
+}
+
 async function loadFromBackend() {
-  const [matters, conversations, activityPayload] = await Promise.all([
-    matterService.getMatters().catch(() => []),
-    chatService.getConversations({ refresh: true }).catch(() => []),
-    apiRequest("/logs/activities?limit=20", { method: "GET" }).catch(() => ({
-      items: [],
-    })),
-  ]);
+  const [matters, conversations, activityPayload, quickActionsPayload] =
+    await Promise.all([
+      matterService.getMatters().catch(() => []),
+      chatService.getConversations({ refresh: true }).catch(() => []),
+      apiRequest("/logs/activities?limit=20", { method: "GET" }).catch(() => ({
+        items: [],
+      })),
+      getQuickActions().catch(() => null),
+    ]);
 
   const activityItems = Array.isArray(activityPayload)
     ? activityPayload
@@ -81,10 +98,13 @@ async function loadFromBackend() {
     time: conversation.updatedAt || "",
   }));
 
+  const chatQuickActions = mapChatQuickActions(quickActionsPayload);
+
   return {
     welcome: null,
     startChat: null,
-    quickActions: DEFAULT_QUICK_ACTIONS,
+    quickActions:
+      chatQuickActions.length > 0 ? chatQuickActions : DEFAULT_QUICK_ACTIONS,
     recentActivity:
       activityItems.length > 0
         ? activityItems.map(mapActivity)

@@ -17,12 +17,15 @@ import {
   listCachedConversations,
   replaceCachedConversationId,
   replaceConversationList,
+  removeCachedConversation,
+  renameCachedConversation,
   saveCachedDetail,
   upsertCachedConversation,
 } from "../lib/conversationStore";
 import { normalizeTokenBudget } from "../lib/tokenBudget";
 import { readSseStream } from "../lib/sse";
 import { appendStreamChunk } from "../lib/streamText";
+import { pickArtifacts } from "./contractsService";
 
 function currentUserId() {
   return getStoredUser()?.id || "anonymous";
@@ -801,9 +804,23 @@ export const chatService = {
             (cachedMessage) =>
               cachedMessage.role === "assistant" &&
               cachedMessage.content === message.content &&
-              cachedMessage.sources?.length
+              (cachedMessage.sources?.length ||
+                cachedMessage.resources?.length ||
+                cachedMessage.clauseCards ||
+                cachedMessage.reviewTable ||
+                cachedMessage.playbookReview ||
+                cachedMessage.redline)
           );
-          return match ? { ...message, sources: match.sources } : message;
+          if (!match) return message;
+          return {
+            ...message,
+            sources: match.sources || message.sources,
+            resources: match.resources || message.resources,
+            clauseCards: match.clauseCards || null,
+            reviewTable: match.reviewTable || null,
+            playbookReview: match.playbookReview || null,
+            redline: match.redline || null,
+          };
         });
       }
 
@@ -917,13 +934,115 @@ export const chatService = {
   },
 
   /**
+   * Rename a conversation title (PATCH /conversations/{id}).
+   * Drafts are renamed locally only.
+   */
+  async renameConversation(conversationId, title) {
+    const userId = currentUserId();
+    const cleaned = String(title || "").trim();
+    if (!cleaned) {
+      throw new Error("Title cannot be empty.");
+    }
+
+    if (isDraftId(conversationId)) {
+      renameCachedConversation(userId, conversationId, cleaned);
+      return { id: String(conversationId), title: cleaned };
+    }
+
+    const data = await apiRequest(`/conversations/${conversationId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title: cleaned }),
+    });
+
+    const nextTitle = data?.title || cleaned;
+    renameCachedConversation(userId, conversationId, nextTitle);
+    return {
+      id: String(data?.id || conversationId),
+      title: nextTitle,
+    };
+  },
+
+  /**
+   * Pin or unpin a conversation (PATCH /conversations/{id} is_pinned).
+   */
+  async setConversationPinned(conversationId, isPinned) {
+    const userId = currentUserId();
+    const id = String(conversationId);
+    const pinned = Boolean(isPinned);
+
+    if (isDraftId(id)) {
+      const list = listCachedConversations(userId).map((item) =>
+        String(item.id) === id ? { ...item, isPinned: pinned } : item
+      );
+      const detail = getCachedConversation(userId, id);
+      upsertCachedConversation(
+        userId,
+        list.find((item) => String(item.id) === id) || {
+          id,
+          title: "New Conversation",
+          isPinned: pinned,
+        },
+        detail ? { ...detail, isPinned: pinned } : null
+      );
+      return { id, isPinned: pinned };
+    }
+
+    const existing = getCachedConversation(userId, id);
+    const title = existing?.title || "Conversation";
+    const data = await apiRequest(`/conversations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ title, is_pinned: pinned }),
+    });
+
+    const nextPinned = Boolean(
+      data?.is_pinned ?? data?.isPinned ?? pinned
+    );
+    upsertCachedConversation(
+      userId,
+      {
+        id: String(data?.id || id),
+        title: data?.title || title,
+        lastMessage: existing?.lastMessage,
+        updatedAt: existing?.updatedAt || "Just now",
+        matter: existing?.matter,
+        isPinned: nextPinned,
+        isDraft: false,
+      },
+      existing ? { ...existing, isPinned: nextPinned } : null
+    );
+    return { id: String(data?.id || id), isPinned: nextPinned };
+  },
+
+  /**
+   * Delete a conversation entirely (DELETE /conversations/{id}).
+   * Drafts are removed from local cache only.
+   */
+  async deleteConversation(conversationId) {
+    const userId = currentUserId();
+    const id = String(conversationId);
+
+    if (!isDraftId(id)) {
+      await apiRequest(`/conversations/${id}`, { method: "DELETE" });
+    }
+
+    removeCachedConversation(userId, id);
+    return { id };
+  },
+
+  /**
    * Send a message to POST /api/v1/chat.
    * @param {string} conversationId
    * @param {string} message
-   * @param {{ matterId?: string|null, documentId?: string|null, signal?: AbortSignal }} [options]
+   * @param {{ matterId?: string|null, documentId?: string|null, quickAction?: string|null, webSearch?: boolean, signal?: AbortSignal }} [options]
    */
   async sendMessage(conversationId, message, options = {}) {
-    const { matterId = null, documentId = null, signal } = options;
+    const {
+      matterId = null,
+      documentId = null,
+      quickAction = null,
+      webSearch = false,
+      signal,
+    } = options;
     const userId = currentUserId();
     const isDraft = isDraftId(conversationId);
 
@@ -971,7 +1090,20 @@ export const chatService = {
     };
 
     if (documentId) {
-      payload.document_id = documentId;
+      const cleaned = String(documentId).trim();
+      if (
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          cleaned
+        )
+      ) {
+        payload.document_id = cleaned;
+      }
+    }
+    if (quickAction) {
+      payload.quick_action = quickAction;
+    }
+    if (webSearch) {
+      payload.web_search = true;
     }
 
     try {
@@ -984,12 +1116,14 @@ export const chatService = {
       const realId = String(response.conversation_id);
       const resources = resolveResources(response);
       const tokenBudget = normalizeTokenBudget(response);
+      const artifacts = pickArtifacts(response);
 
       const assistantMessage = {
         id: createId("assistant"),
         role: "assistant",
         content: cleanAnswerText(response.response),
         resources,
+        ...artifacts,
         createdAt: new Date().toISOString(),
       };
 
@@ -1078,7 +1212,14 @@ export const chatService = {
    * onEvent({ event, data, thinking, content, conversationId, streaming })
    */
   async streamMessage(conversationId, message, options = {}) {
-    const { matterId = null, documentId = null, signal, onEvent } = options;
+    const {
+      matterId = null,
+      documentId = null,
+      quickAction = null,
+      webSearch = false,
+      signal,
+      onEvent,
+    } = options;
     const userId = currentUserId();
     const isDraft = isDraftId(conversationId);
 
@@ -1146,7 +1287,19 @@ export const chatService = {
       conversation_id: isDraft ? null : conversationId,
       matter_id: matterId || detail.matter?.id || null,
     };
-    if (documentId) payload.document_id = documentId;
+    if (documentId) {
+      const cleaned = String(documentId).trim();
+      // Only real upload UUIDs — corpus/web ids crash Postgres lookups.
+      if (
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          cleaned
+        )
+      ) {
+        payload.document_id = cleaned;
+      }
+    }
+    if (quickAction) payload.quick_action = quickAction;
+    if (webSearch) payload.web_search = true;
 
     const patchAssistant = (fields) => {
       const messages = [...(detail.messages || [])];
@@ -1249,11 +1402,21 @@ export const chatService = {
 
       if (streamError) throw streamError;
 
+      if (!completePayload) {
+        throw new ApiError(
+          liveContent
+            ? "The connection closed before the answer was finalized. Try again."
+            : "The chat stream ended before an answer arrived (often a proxy or model timeout). Try again — for section questions, prefer “section 54-C Electricity Act 1910”.",
+          { status: 503 }
+        );
+      }
+
       const realId = String(
         completePayload?.conversation_id || detail.id || conversationId
       );
       const resources = resolveResources(completePayload || {});
       const tokenBudget = normalizeTokenBudget(completePayload);
+      const artifacts = pickArtifacts(completePayload || {});
 
       const nextDetail = {
         ...detail,
@@ -1269,15 +1432,17 @@ export const chatService = {
         messages: (detail.messages || []).map((item) => {
           if (item.id === userMessage.id) return { ...item, status: "sent" };
           if (item.id === assistantMessage.id) {
+            const cleanedResponse = cleanAnswerText(
+              completePayload?.response || ""
+            );
             return {
               ...item,
-              content: cleanAnswerText(
-                completePayload?.response || liveContent
-              ),
+              content: cleanedResponse || liveContent || "",
               thinking: liveThinking,
               thinkingActive: false,
               streaming: false,
               resources,
+              ...artifacts,
               statusPhase: "done",
             };
           }
@@ -1317,13 +1482,29 @@ export const chatService = {
             msg.id === userMessage.id
               ? { ...msg, status: "aborted" }
               : msg.id === assistantMessage.id
-                ? { ...msg, streaming: false, thinkingActive: false }
+                ? {
+                    ...msg,
+                    streaming: false,
+                    thinkingActive: false,
+                    status: "aborted",
+                    content:
+                      msg.content ||
+                      "Generation was cancelled before an answer appeared.",
+                  }
                 : msg
           ),
         };
         saveCachedDetail(userId, conversationId, abortedDetail);
         throw error;
       }
+
+      const failedMessage =
+        error instanceof TypeError ||
+        /failed to fetch|networkerror|load failed|econnrefused/i.test(
+          error?.message || ""
+        )
+          ? "Cannot reach the LegalGPT API (connection refused). Start legal-chatbot on port 8001, then retry."
+          : error?.message || "Streaming chat failed.";
 
       const failedDetail = {
         ...detail,
@@ -1332,9 +1513,7 @@ export const chatService = {
             ? {
                 ...msg,
                 status: "error",
-                error:
-                  error?.message ||
-                  "Failed to get a response from Legal Chatbot.",
+                error: failedMessage,
               }
             : msg.id === assistantMessage.id
               ? {
@@ -1342,7 +1521,7 @@ export const chatService = {
                   streaming: false,
                   thinkingActive: false,
                   status: "error",
-                  error: error?.message || "Streaming chat failed.",
+                  error: failedMessage,
                 }
               : msg
         ),
