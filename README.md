@@ -53,11 +53,11 @@ Future integration:
 # 📁 Project Structure
 src/                                                                                                                                              
 │                                                                                                                                                 ├── api/ # API configuration and HTTP clients                                                                                                     
- │                                                                                                                                                
+│                                                                                                                                                
 ├── services/ # Business logic and API service handlers                                                                                           
 │ ├── chatService.js # Chat-related API operations                                                                                                
 │ └── matterService.js # Matter/project API operations                                                                                            
- │                                                                                                                                                
+│                                                                                                                                                
 ├── components/ # Reusable UI components                                                                                                          
 │ ├── chat/ # Chat interface components                                                                                                           
 │ ├── matter/ # Matter-related components                                                                                                         
