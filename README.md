@@ -49,35 +49,35 @@ Future integration:
 - LLM Providers (DeepSeek / Qwen / Llama)
 
 ---
-
+                                                                                                                                                
 # 📁 Project Structure
 src/
-│
-├── api/ # API configuration and HTTP clients
-│
-├── services/ # Business logic and API service handlers
-│ ├── chatService.js # Chat-related API operations
-│ └── matterService.js # Matter/project API operations
-│
-├── components/ # Reusable UI components
-│ ├── chat/ # Chat interface components
-│ ├── matter/ # Matter-related components
-│ ├── sidebar/ # Sidebar navigation components
-│ └── ui/ # Common UI components
-│
-├── pages/ # Application pages/routes
-│ ├── Dashboard.jsx
-│ ├── Matter.jsx
-│ └── Chat.jsx
-│
-├── layouts/ # Page layout wrappers
-│
-├── hooks/ # Custom React hooks
-│
-├── utils/ # Utility/helper functions
-│
-├── App.jsx # Main application component
-└── main.jsx # Application entry point
+│                                                                                                                                                
+├── api/ # API configuration and HTTP clients                                                                                                     
+│                                                                                                                                                
+├── services/ # Business logic and API service handlers                                                                                           
+│ ├── chatService.js # Chat-related API operations                                                                                                
+│ └── matterService.js # Matter/project API operations                                                                                            
+│                                                                                                                                                
+├── components/ # Reusable UI components                                                                                                          
+│ ├── chat/ # Chat interface components                                                                                                           
+│ ├── matter/ # Matter-related components                                                                                                         
+│ ├── sidebar/ # Sidebar navigation components                                                                                                    
+│ └── ui/ # Common UI components                                                                                                                  
+│                                                                                                                                                
+├── pages/ # Application pages/routes                                                                                                             
+│ ├── Dashboard.jsx                                                                                                                               
+│ ├── Matter.jsx                                                                                                                                  
+│ └── Chat.jsx                                                                                                                                    
+│                                                                                                                                                
+├── layouts/ # Page layout wrappers                                                                                                               
+│                                                                                                                                                
+├── hooks/ # Custom React hooks                                                                                                                   
+│                                                                                                                                                
+├── utils/ # Utility/helper functions                                                                                                             
+│                                                                                                                                                
+├── App.jsx # Main application component                                                                                                          
+└── main.jsx # Application entry point                                                                                                                                                
 
 ---
 
