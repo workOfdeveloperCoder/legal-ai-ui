@@ -173,7 +173,7 @@ function SourceCard({ source, onOpenDocument }) {
               onClick={handleOpen}
               className="text-[12px] font-medium text-slate-700 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
             >
-              View full document with highlighted passage
+              View full document
             </button>
           )}
 
