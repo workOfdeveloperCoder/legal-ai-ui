@@ -9,6 +9,10 @@ import {
 import { reflowDocumentText } from "../../lib/reflowDocumentText";
 import { documentService } from "../../services/documentService";
 
+/**
+ * One resource card → one full Qdrant-merged file.
+ * No Passage 1 / Passage 2 tabs. Evidence chunks only drive the yellow highlight.
+ */
 export default function DocumentSourcePanel({
   source,
   matterId,
@@ -55,11 +59,11 @@ export default function DocumentSourcePanel({
     source.highlightEnd,
   ]);
 
-  // One combined passage for the whole resource (no Passage 1 / 2 tabs).
-  const combinedEvidenceText = useMemo(
-    () => mergeEvidenceTexts(evidenceItems),
-    [evidenceItems]
-  );
+  const highlightExcerpts = useMemo(() => {
+    const combined = mergeEvidenceTexts(evidenceItems);
+    if (combined) return [{ excerpt: combined }];
+    return evidenceItems;
+  }, [evidenceItems]);
 
   useEffect(() => {
     if (!documentGetPath) {
@@ -80,7 +84,7 @@ export default function DocumentSourcePanel({
         setDocument(data);
         if (!data?.text) {
           setFullTextNotice(
-            "Full document text is not available. Showing the retrieved passage."
+            "Full document text is not available. Showing the matched excerpt."
           );
         }
       } catch (err) {
@@ -88,7 +92,7 @@ export default function DocumentSourcePanel({
           setDocument(null);
           setFullTextNotice(
             err?.message ||
-              "Full document text is not available. Showing the retrieved passage."
+              "Full document text is not available. Showing the matched excerpt."
           );
         }
       } finally {
@@ -99,7 +103,14 @@ export default function DocumentSourcePanel({
     return () => {
       cancelled = true;
     };
-  }, [documentGetPath, fetchIds.documentId, fetchIds.conversationId, fetchIds.matterId, fetchIds.sourceType, fetchIds.scope]);
+  }, [
+    documentGetPath,
+    fetchIds.documentId,
+    fetchIds.conversationId,
+    fetchIds.matterId,
+    fetchIds.sourceType,
+    fetchIds.scope,
+  ]);
 
   const fullText = document?.text || "";
   const displayText = useMemo(
@@ -108,16 +119,8 @@ export default function DocumentSourcePanel({
   );
 
   const parts = useMemo(
-    () =>
-      buildHighlightedPartsFromExcerpts(
-        displayText,
-        evidenceItems.length
-          ? evidenceItems
-          : combinedEvidenceText
-            ? [{ excerpt: combinedEvidenceText }]
-            : []
-      ),
-    [displayText, evidenceItems, combinedEvidenceText]
+    () => buildHighlightedPartsFromExcerpts(displayText, highlightExcerpts),
+    [displayText, highlightExcerpts]
   );
 
   useEffect(() => {
@@ -125,8 +128,8 @@ export default function DocumentSourcePanel({
   }, [displayText, parts.highlight]);
 
   const filename = document?.filename || source.filename;
-  const evidenceDisplay = reflowDocumentText(
-    combinedEvidenceText || source.excerpt || source.text || ""
+  const fallbackExcerpt = reflowDocumentText(
+    mergeEvidenceTexts(evidenceItems) || source.excerpt || source.text || ""
   );
 
   return (
@@ -147,6 +150,14 @@ export default function DocumentSourcePanel({
             {source.author && (
               <p className="mt-1 text-sm text-slate-600">{source.author}</p>
             )}
+            {document?.character_count != null && (
+              <p className="mt-1 text-xs text-slate-400">
+                Full file · {document.character_count.toLocaleString()} chars
+                {document.chunk_count != null
+                  ? ` · ${document.chunk_count} chunks merged`
+                  : ""}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -160,27 +171,13 @@ export default function DocumentSourcePanel({
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {loading && (
-            <p className="text-sm text-slate-500">Loading document…</p>
+            <p className="text-sm text-slate-500">Loading full document…</p>
           )}
 
-          {!loading && fullTextNotice && !document?.text && (
+          {!loading && fullTextNotice && !displayText && (
             <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
               {fullTextNotice}
             </p>
-          )}
-
-          {!loading && evidenceDisplay && (
-            <div className="mb-4 space-y-3">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-amber-800">
-                Retrieved evidence
-                {evidenceItems.length > 1 ? " · combined" : ""}
-              </p>
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
-                  {evidenceDisplay}
-                </p>
-              </div>
-            </div>
           )}
 
           {!loading && displayText && (
@@ -203,13 +200,13 @@ export default function DocumentSourcePanel({
             </div>
           )}
 
-          {!loading && !displayText && evidenceDisplay && (
+          {!loading && !displayText && fallbackExcerpt && (
             <pre className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-sans text-sm leading-6 text-slate-800">
-              {evidenceDisplay}
+              {fallbackExcerpt}
             </pre>
           )}
 
-          {!loading && !displayText && !evidenceDisplay && (
+          {!loading && !displayText && !fallbackExcerpt && (
             <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
               {fullTextNotice || "This resource has no document text to show."}
             </p>

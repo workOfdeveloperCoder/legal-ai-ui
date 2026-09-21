@@ -153,22 +153,11 @@ function SourceCard({ source, onOpenDocument }) {
             </p>
           )}
 
-          {source.evidence?.length > 1 && (
-            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
-              Evidence · {source.evidence.length} passages
-            </p>
-          )}
-
           {source.evidence?.length > 0 ? (
             <div className="space-y-2">
-              {source.evidence.map((item, evidenceIndex) => (
-                <blockquote
-                  key={item.sourceId || evidenceIndex}
-                  className="rounded-lg bg-[#F7F7F8] px-2.5 py-2 text-[12px] leading-5 whitespace-pre-wrap text-slate-700"
-                >
-                  {item.excerpt}
-                </blockquote>
-              ))}
+              <blockquote className="rounded-lg bg-[#F7F7F8] px-2.5 py-2 text-[12px] leading-5 whitespace-pre-wrap text-slate-700">
+                {source.evidence[0]?.excerpt || source.excerpt}
+              </blockquote>
             </div>
           ) : (
             source.excerpt && (

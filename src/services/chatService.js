@@ -25,7 +25,29 @@ import {
 import { normalizeTokenBudget } from "../lib/tokenBudget";
 import { readSseStream } from "../lib/sse";
 import { appendStreamChunk } from "../lib/streamText";
+import { mergeEvidenceTexts } from "../lib/highlightSentences";
 import { pickArtifacts } from "./contractsService";
+
+/** One resource = one evidence blob (no Passage 1 / 2). */
+function collapseEvidenceToOne(evidence = []) {
+  if (!evidence.length) return [];
+  if (evidence.length === 1) return evidence;
+
+  const ranked = [...evidence].sort(
+    (a, b) => (b.relevancePercent || 0) - (a.relevancePercent || 0)
+  );
+  const best = ranked[0];
+  const combined = mergeEvidenceTexts(ranked);
+  return [
+    {
+      ...best,
+      excerpt: combined || best.excerpt,
+      text: combined || best.text,
+      chunkId: best.chunkId || null,
+      sourceId: best.sourceId || null,
+    },
+  ];
+}
 
 function currentUserId() {
   return getStoredUser()?.id || "anonymous";
@@ -382,12 +404,15 @@ function dedupeResources(resources = []) {
 
   return [...merged.values()]
     .map((resource) => {
-      const evidence = dedupeEvidence(resource.evidence || []);
+      const evidence = collapseEvidenceToOne(
+        dedupeEvidence(resource.evidence || [])
+      );
       return {
         ...resource,
         evidence,
         evidenceCount: evidence.length,
-        excerpt: resource.excerpt || evidence[0]?.excerpt || null,
+        excerpt: evidence[0]?.excerpt || resource.excerpt || null,
+        text: evidence[0]?.text || resource.text || null,
       };
     })
     .sort((a, b) => (b.relevancePercent || 0) - (a.relevancePercent || 0));
@@ -423,18 +448,20 @@ function mapApiResourcesToUi(resources = []) {
       metaParts.push(sourceTypeLabel);
     }
 
-    const evidence = dedupeEvidence(
-      (resource.evidence || []).map((item) => ({
-      sourceId: item.source_id,
-      sourceNumber: item.source_number,
-      chunkId: item.chunk_id,
-      chunkIndex: item.chunk_index,
-      excerpt: item.excerpt,
-      text: item.text,
-      highlightStart: item.start_offset ?? null,
-      highlightEnd: item.end_offset ?? null,
-      relevancePercent: item.relevance_percent ?? null,
-    }))
+    const evidence = collapseEvidenceToOne(
+      dedupeEvidence(
+        (resource.evidence || []).map((item) => ({
+          sourceId: item.source_id,
+          sourceNumber: item.source_number,
+          chunkId: item.chunk_id,
+          chunkIndex: item.chunk_index,
+          excerpt: item.excerpt,
+          text: item.text,
+          highlightStart: item.start_offset ?? null,
+          highlightEnd: item.end_offset ?? null,
+          relevancePercent: item.relevance_percent ?? null,
+        }))
+      )
     );
 
     const primaryEvidence = evidence[0] || null;
@@ -448,7 +475,11 @@ function mapApiResourcesToUi(resources = []) {
       displayName: resource.display_name || null,
       author: resource.author || null,
       meta: metaParts.join(" · ") || undefined,
-      excerpt: resource.primary_excerpt || primaryEvidence?.excerpt || null,
+      excerpt:
+        mergeEvidenceTexts(evidence) ||
+        resource.primary_excerpt ||
+        primaryEvidence?.excerpt ||
+        null,
       filename: resource.filename || null,
       relevancePercent: resource.relevance_percent ?? null,
       matterId: resource.matter_id || null,
@@ -502,17 +533,19 @@ function buildResourcesFromLegacySources(response) {
         best.filename ||
         "Document";
 
-      const evidence = items.map((item) => ({
-        sourceId: item.id,
-        sourceNumber: item.source_number,
-        chunkId: item.chunk_id,
-        chunkIndex: item.chunk_index,
-        excerpt: item.excerpt || item.text,
-        text: item.text,
-        highlightStart: item.start_offset ?? null,
-        highlightEnd: item.end_offset ?? null,
-        relevancePercent: item.relevance_percent ?? null,
-      }));
+      const evidence = collapseEvidenceToOne(
+        items.map((item) => ({
+          sourceId: item.id,
+          sourceNumber: item.source_number,
+          chunkId: item.chunk_id,
+          chunkIndex: item.chunk_index,
+          excerpt: item.excerpt || item.text,
+          text: item.text,
+          highlightStart: item.start_offset ?? null,
+          highlightEnd: item.end_offset ?? null,
+          relevancePercent: item.relevance_percent ?? null,
+        }))
+      );
 
       return {
         id: docId ? `resource-${docId}` : `resource-${key}`,
@@ -520,7 +553,7 @@ function buildResourcesFromLegacySources(response) {
         title,
         displayName: best.display_name || null,
         filename: best.filename || null,
-        excerpt: best.excerpt || evidence[0]?.excerpt || null,
+        excerpt: evidence[0]?.excerpt || best.excerpt || null,
         relevancePercent: best.relevance_percent ?? null,
         matterId: best.matter_id || null,
         conversationId: best.conversation_id || null,
