@@ -31,21 +31,28 @@ describe("resolveDocumentGetPath", () => {
     ).toBe(`/matters/${MATTER}/document/${DOC}`);
   });
 
-  it("does not fetch library or legal corpus files", () => {
+  it("fetches library and legal corpus via /library/documents", () => {
+    const corpusId = "a4fdab6fd0bcdf55";
     expect(
       resolveDocumentGetPath({
-        documentId: DOC,
+        documentId: corpusId,
         conversationId: CONV,
         sourceType: "library",
       })
-    ).toBeNull();
+    ).toBe(`/library/documents/${corpusId}`);
     expect(
       resolveDocumentGetPath({
-        documentId: DOC,
+        documentId: corpusId,
         conversationId: CONV,
         sourceType: "legal",
       })
-    ).toBeNull();
+    ).toBe(`/library/documents/${corpusId}`);
+    expect(
+      resolveDocumentGetPath({
+        documentId: "2000J8.txt",
+        sourceType: "library",
+      })
+    ).toBe("/library/documents/2000J8.txt");
   });
 
   it("does not use a draft conversation id", () => {
@@ -58,7 +65,7 @@ describe("resolveDocumentGetPath", () => {
     ).toBeNull();
   });
 
-  it("does not fetch when document_id is not a UUID", () => {
+  it("does not fetch conversation docs when document_id is not a UUID", () => {
     expect(
       resolveDocumentGetPath({
         documentId: "2000J8.txt",
@@ -71,9 +78,10 @@ describe("resolveDocumentGetPath", () => {
 
 describe("idsForDocumentGet", () => {
   it("does not borrow the open chat id for library cards", () => {
+    const corpusId = "a4fdab6fd0bcdf55";
     const ids = idsForDocumentGet({
       source: {
-        documentId: DOC,
+        documentId: corpusId,
         sourceType: "legal",
       },
       conversationId: CONV,
@@ -81,7 +89,9 @@ describe("idsForDocumentGet", () => {
     });
     expect(ids.conversationId).toBeNull();
     expect(ids.matterId).toBeNull();
-    expect(resolveDocumentGetPath(ids)).toBeNull();
+    expect(resolveDocumentGetPath(ids)).toBe(
+      `/library/documents/${corpusId}`
+    );
   });
 
   it("falls back to the open chat only for conversation-scoped cards", () => {

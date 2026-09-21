@@ -17,9 +17,21 @@ export function stripForSpeech(text) {
     .slice(0, SPEAK_MAX_CHARS);
 }
 
+const INSECURE_MIC_MESSAGE =
+  "Microphone needs HTTPS. Open this app on localhost or an https:// URL — the mic is blocked on plain HTTP.";
+const UNSUPPORTED_MIC_MESSAGE =
+  "This browser cannot access the microphone. Try Chrome or Safari on localhost or HTTPS.";
+
 export function describeVoiceError(error) {
   if (!error) return "Voice request failed.";
   const name = error.name || "";
+  const message = String(error.message || error.detail || "");
+  if (error.code === "insecure-context") {
+    return INSECURE_MIC_MESSAGE;
+  }
+  if (error.code === "mic-unsupported") {
+    return UNSUPPORTED_MIC_MESSAGE;
+  }
   if (name === "NotAllowedError" || name === "PermissionDeniedError") {
     return "Allow microphone access to use voice.";
   }
@@ -30,9 +42,18 @@ export function describeVoiceError(error) {
     if (name === "AbortError") return "Voice was cancelled.";
     return "Could not access the microphone.";
   }
+  if (
+    name === "NotSupportedError" ||
+    name === "SecurityError" ||
+    (name === "TypeError" && /mediaDevices|getUserMedia/i.test(message))
+  ) {
+    if (typeof window !== "undefined" && window.isSecureContext === false) {
+      return INSECURE_MIC_MESSAGE;
+    }
+    return UNSUPPORTED_MIC_MESSAGE;
+  }
 
   const status = error.status;
-  const message = String(error.message || error.detail || "");
   if (status === 503 || /not available|install local/i.test(message)) {
     return message || "Voice is not available on this server.";
   }

@@ -3,17 +3,23 @@
  *   GET /api/v1/documents/conversations/{conversation_id}/document/{document_id}
  *   GET /api/v1/matters/{matter_id}/document/{document_id}
  *   GET /api/v1/matters/{matter_id}/documents
- *
- * There is no library/legal corpus full-text endpoint. Those cards
- * must render retrieved `evidence[]` instead of fetching.
+ *   GET /api/v1/library/documents/{document_id}  (legal corpus; non-UUID ids OK)
  */
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Corpus hashes / filenames accepted by GET /library/documents/{id}. */
+const LIBRARY_DOC_ID_RE = /^[A-Za-z0-9._\-]{4,128}$/;
+
 export function isUuid(value) {
   if (!value) return false;
   return UUID_RE.test(String(value).trim());
+}
+
+export function isLibraryDocumentId(value) {
+  if (!value) return false;
+  return LIBRARY_DOC_ID_RE.test(String(value).trim());
 }
 
 export function normalizeSourceType(value) {
@@ -50,7 +56,7 @@ export function idsForDocumentGet({
 
 /**
  * @returns {string|null} path under `/api/v1`, or null when the backend
- * has no GET for this resource (library/legal, missing UUIDs, drafts).
+ * has no GET for this resource (missing ids, drafts).
  */
 export function resolveDocumentGetPath({
   documentId,
@@ -60,13 +66,16 @@ export function resolveDocumentGetPath({
   sourceType,
 } = {}) {
   const docId = String(documentId || "").trim();
-  if (!isUuid(docId)) return null;
+  if (!docId) return null;
 
   const type = normalizeSourceType(sourceType || scope);
 
   if (type === "library") {
-    return null;
+    if (!isLibraryDocumentId(docId)) return null;
+    return `/library/documents/${encodeURIComponent(docId)}`;
   }
+
+  if (!isUuid(docId)) return null;
 
   const convId = isUuid(conversationId) ? String(conversationId).trim() : null;
   const matId = isUuid(matterId) ? String(matterId).trim() : null;

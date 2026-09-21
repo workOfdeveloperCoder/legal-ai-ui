@@ -5,6 +5,7 @@
  * GET  /api/v1/documents/conversations/{conversation_id}/document/{document_id}
  * GET  /api/v1/matters/{matter_id}/document/{document_id}
  * GET  /api/v1/matters/{matter_id}/documents
+ * GET  /api/v1/library/documents/{document_id}  (legal corpus full text)
  * multipart field name: `file`
  *
  * Supported extract types: application/pdf, text/*
@@ -93,9 +94,9 @@ export const documentService = {
   },
 
   /**
-   * Full merged text for a conversation- or matter-scoped upload.
+   * Full merged text for conversation/matter uploads or legal corpus docs.
    * Returns null when the backend has no GET for this resource
-   * (library/legal corpus, draft ids, or missing UUIDs).
+   * (draft ids or missing ids).
    */
   async getDocument({
     documentId,

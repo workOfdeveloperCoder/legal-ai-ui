@@ -5,7 +5,11 @@ import {
   isAllowedUploadFile,
   MAX_UPLOAD_BYTES,
 } from "../../services/documentService";
-import { MAX_STT_SECONDS, startWavRecorder } from "../../lib/recordWav";
+import {
+  MAX_STT_SECONDS,
+  microphoneAvailability,
+  startWavRecorder,
+} from "../../lib/recordWav";
 import { getWebSearchSettings } from "../../lib/webSearchSettings";
 import {
   describeVoiceError,
@@ -56,6 +60,7 @@ export default function PromptBar({
   const busy = loading || uploading;
   const voiceBusy = dictating || transcribing;
   const canSend = Boolean(input.trim() || files.length) && !busy && !voiceBusy;
+  const mic = microphoneAvailability();
 
   useEffect(() => {
     let cancelled = false;
@@ -370,7 +375,11 @@ export default function PromptBar({
                   ? "Stop dictation"
                   : transcribing
                     ? "Transcribing…"
-                    : "Dictate"
+                    : mic.reason === "insecure"
+                      ? "Microphone needs HTTPS (localhost or https://)"
+                      : mic.ok
+                        ? "Dictate"
+                        : "Microphone is not available in this browser"
               }
               className={`flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-50 ${
                 dictating

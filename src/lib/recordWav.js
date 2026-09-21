@@ -45,18 +45,72 @@ function encodeWav(samples, sampleRate) {
 
 export const MAX_STT_SECONDS = 45;
 
+function isInsecureContext() {
+  return typeof window !== "undefined" && window.isSecureContext === false;
+}
+
+function legacyGetUserMedia() {
+  return (
+    navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia ||
+    navigator.getUserMedia
+  );
+}
+
+export function microphoneAvailability() {
+  if (typeof navigator === "undefined") {
+    return { ok: false, reason: "unsupported" };
+  }
+  const hasModern = typeof navigator.mediaDevices?.getUserMedia === "function";
+  const hasLegacy = typeof legacyGetUserMedia() === "function";
+  if (hasModern || hasLegacy) return { ok: true, reason: null };
+  if (isInsecureContext()) return { ok: false, reason: "insecure" };
+  return { ok: false, reason: "unsupported" };
+}
+
+function micUnavailableError() {
+  const insecure = isInsecureContext();
+  const error = new Error(
+    insecure
+      ? "Microphone requires a secure context (HTTPS or localhost)."
+      : "Microphone API is not available in this browser."
+  );
+  error.name = insecure ? "SecurityError" : "NotSupportedError";
+  error.code = insecure ? "insecure-context" : "mic-unsupported";
+  return error;
+}
+
+function requestUserMedia(constraints) {
+  const modern = navigator.mediaDevices?.getUserMedia;
+  if (typeof modern === "function") {
+    return modern.call(navigator.mediaDevices, constraints);
+  }
+  const legacy = legacyGetUserMedia();
+  if (typeof legacy === "function") {
+    return new Promise((resolve, reject) => {
+      legacy.call(navigator, constraints, resolve, reject);
+    });
+  }
+  return Promise.reject(micUnavailableError());
+}
+
 export async function startWavRecorder({
   maxSeconds = MAX_STT_SECONDS,
   onLimit,
 } = {}) {
-  const stream = await navigator.mediaDevices.getUserMedia({
+  const stream = await requestUserMedia({
     audio: {
       echoCancellation: true,
       noiseSuppression: true,
       channelCount: 1,
     },
   });
-  const ctx = new AudioContext({ sampleRate: 16000 });
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) {
+    stream.getTracks().forEach((track) => track.stop());
+    throw micUnavailableError();
+  }
+  const ctx = new AudioCtx({ sampleRate: 16000 });
   if (ctx.state === "suspended") {
     await ctx.resume();
   }

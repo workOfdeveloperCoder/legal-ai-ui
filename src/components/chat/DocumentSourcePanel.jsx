@@ -2,39 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 import { idsForDocumentGet, resolveDocumentGetPath } from "../../lib/documentFetch";
+import {
+  buildHighlightedPartsFromExcerpts,
+  mergeEvidenceTexts,
+} from "../../lib/highlightSentences";
+import { reflowDocumentText } from "../../lib/reflowDocumentText";
 import { documentService } from "../../services/documentService";
-
-function buildHighlightedParts(fullText, startOffset, endOffset, excerpt) {
-  if (
-    fullText &&
-    Number.isInteger(startOffset) &&
-    Number.isInteger(endOffset) &&
-    startOffset >= 0 &&
-    endOffset > startOffset &&
-    endOffset <= fullText.length
-  ) {
-    return {
-      before: fullText.slice(0, startOffset),
-      highlight: fullText.slice(startOffset, endOffset),
-      after: fullText.slice(endOffset),
-    };
-  }
-
-  const needle = (excerpt || "").trim();
-  if (fullText && needle.length >= 20) {
-    const index = fullText.indexOf(needle.slice(0, 80));
-    if (index >= 0) {
-      const len = Math.min(needle.length, fullText.length - index);
-      return {
-        before: fullText.slice(0, index),
-        highlight: fullText.slice(index, index + len),
-        after: fullText.slice(index + len),
-      };
-    }
-  }
-
-  return { before: fullText || "", highlight: "", after: "" };
-}
 
 export default function DocumentSourcePanel({
   source,
@@ -45,7 +18,6 @@ export default function DocumentSourcePanel({
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fullTextNotice, setFullTextNotice] = useState("");
-  const [activeEvidenceIndex, setActiveEvidenceIndex] = useState(0);
   const highlightRef = useRef(null);
 
   const title =
@@ -62,22 +34,32 @@ export default function DocumentSourcePanel({
   });
   const documentGetPath = resolveDocumentGetPath(fetchIds);
 
-  const evidenceItems =
-    source.evidence?.length > 0
-      ? source.evidence
-      : source.excerpt || source.text
-        ? [
-            {
-              excerpt: source.excerpt,
-              text: source.text,
-              highlightStart: source.highlightStart,
-              highlightEnd: source.highlightEnd,
-            },
-          ]
-        : [];
+  const evidenceItems = useMemo(() => {
+    if (source.evidence?.length > 0) return source.evidence;
+    if (source.excerpt || source.text) {
+      return [
+        {
+          excerpt: source.excerpt,
+          text: source.text,
+          highlightStart: source.highlightStart,
+          highlightEnd: source.highlightEnd,
+        },
+      ];
+    }
+    return [];
+  }, [
+    source.evidence,
+    source.excerpt,
+    source.text,
+    source.highlightStart,
+    source.highlightEnd,
+  ]);
 
-  const activeEvidence =
-    evidenceItems[activeEvidenceIndex] || evidenceItems[0] || null;
+  // One combined passage for the whole resource (no Passage 1 / 2 tabs).
+  const combinedEvidenceText = useMemo(
+    () => mergeEvidenceTexts(evidenceItems),
+    [evidenceItems]
+  );
 
   useEffect(() => {
     if (!documentGetPath) {
@@ -119,28 +101,33 @@ export default function DocumentSourcePanel({
     };
   }, [documentGetPath, fetchIds.documentId, fetchIds.conversationId, fetchIds.matterId, fetchIds.sourceType, fetchIds.scope]);
 
+  const fullText = document?.text || "";
+  const displayText = useMemo(
+    () => reflowDocumentText(fullText),
+    [fullText]
+  );
+
   const parts = useMemo(
     () =>
-      buildHighlightedParts(
-        document?.text,
-        activeEvidence?.highlightStart,
-        activeEvidence?.highlightEnd,
-        activeEvidence?.excerpt || activeEvidence?.text
+      buildHighlightedPartsFromExcerpts(
+        displayText,
+        evidenceItems.length
+          ? evidenceItems
+          : combinedEvidenceText
+            ? [{ excerpt: combinedEvidenceText }]
+            : []
       ),
-    [
-      document?.text,
-      activeEvidence?.highlightStart,
-      activeEvidence?.highlightEnd,
-      activeEvidence?.excerpt,
-      activeEvidence?.text,
-    ]
+    [displayText, evidenceItems, combinedEvidenceText]
   );
 
   useEffect(() => {
     highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [document?.text, parts.highlight, activeEvidenceIndex]);
+  }, [displayText, parts.highlight]);
 
   const filename = document?.filename || source.filename;
+  const evidenceDisplay = reflowDocumentText(
+    combinedEvidenceText || source.excerpt || source.text || ""
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -182,43 +169,21 @@ export default function DocumentSourcePanel({
             </p>
           )}
 
-          {!loading && evidenceItems.length > 0 && (
+          {!loading && evidenceDisplay && (
             <div className="mb-4 space-y-3">
               <p className="text-[11px] font-medium uppercase tracking-wide text-amber-800">
                 Retrieved evidence
-                {evidenceItems.length > 1
-                  ? ` · ${evidenceItems.length} passages`
-                  : ""}
+                {evidenceItems.length > 1 ? " · combined" : ""}
               </p>
-
-              {evidenceItems.length > 1 && (
-                <div className="flex flex-wrap gap-2">
-                  {evidenceItems.map((item, index) => (
-                    <button
-                      key={item.sourceId || index}
-                      type="button"
-                      onClick={() => setActiveEvidenceIndex(index)}
-                      className={`rounded-full px-3 py-1 text-[11px] ${
-                        index === activeEvidenceIndex
-                          ? "bg-amber-200 text-slate-900"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      Passage {index + 1}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-sm leading-6 text-slate-800">
-                  {activeEvidence?.excerpt || activeEvidence?.text}
+                <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800">
+                  {evidenceDisplay}
                 </p>
               </div>
             </div>
           )}
 
-          {!loading && document?.text && (
+          {!loading && displayText && (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Full document
@@ -238,20 +203,17 @@ export default function DocumentSourcePanel({
             </div>
           )}
 
-          {!loading && !document?.text && activeEvidence?.text && (
+          {!loading && !displayText && evidenceDisplay && (
             <pre className="whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-sans text-sm leading-6 text-slate-800">
-              {activeEvidence.text}
+              {evidenceDisplay}
             </pre>
           )}
 
-          {!loading &&
-            !document?.text &&
-            !activeEvidence?.excerpt &&
-            !activeEvidence?.text && (
-              <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-                {fullTextNotice || "This resource has no document text to show."}
-              </p>
-            )}
+          {!loading && !displayText && !evidenceDisplay && (
+            <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              {fullTextNotice || "This resource has no document text to show."}
+            </p>
+          )}
         </div>
       </div>
     </div>
