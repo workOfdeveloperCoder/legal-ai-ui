@@ -13,7 +13,7 @@ import { fetchCurrentUser, logout } from "../../services/auth";
 function InfoRow({ icon: Icon, label, value }) {
   return (
     <div className="flex items-center gap-4 border-b border-slate-100 py-4 last:border-b-0">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#FFF6E5] text-amber-700">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EAF3FF] text-[#0066CC]">
         <Icon size={18} />
       </div>
       <div className="min-w-0 flex-1">
@@ -81,11 +81,11 @@ export default function Profile({ user: initialUser }) {
     await logout();
   }
   return (
-    <div className="min-h-full bg-[#F7F8FC] px-6 py-8 sm:px-8">
+    <div className="min-h-full bg-transparent px-6 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold tracking-widest text-amber-600 uppercase">
+            <p className="text-xs font-semibold tracking-widest text-[#0066CC] uppercase">
               Account
             </p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
@@ -113,17 +113,17 @@ export default function Profile({ user: initialUser }) {
         )}
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="h-1.5 w-full bg-[#FFC853]" />
+          <div className="h-1.5 w-full bg-gradient-to-r from-[#007AFF] via-[#55A7FF] to-[#A8CFFF]" />
           <div className="flex flex-col gap-6 px-6 py-7 sm:flex-row sm:items-center sm:px-8">
             <div className="relative shrink-0">
               {user?.avatar ? (
                 <img
                   src={user.avatar}
                   alt={user?.name}
-                  className="h-24 w-24 rounded-full object-cover ring-4 ring-[#FFF6E5]"
+                  className="h-24 w-24 rounded-full object-cover ring-4 ring-[#EAF3FF]"
                 />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#FFC853] text-3xl font-bold text-slate-900 ring-4 ring-[#FFF6E5]">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#9BCBFF] to-[#007AFF] text-3xl font-bold text-white ring-4 ring-[#EAF3FF]">
                   {initials || "?"}
                 </div>
               )}
@@ -156,7 +156,7 @@ export default function Profile({ user: initialUser }) {
                 <span
                   className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                     user?.isActive
-                      ? "border border-amber-200 bg-[#FFF6E5] text-amber-800"
+                      ? "border border-blue-200 bg-[#EAF3FF] text-[#0056B3]"
                       : "border border-slate-200 bg-slate-50 text-slate-500"
                   }`}
                 >

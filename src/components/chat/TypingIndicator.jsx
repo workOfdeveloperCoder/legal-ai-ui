@@ -7,8 +7,8 @@ export default function TypingIndicator({
         <div className="flex justify-start">
           <div className="flex w-full items-start gap-3">
             {/* Law icon avatar — matches sidebar / EmptyState */}
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#23232F] shadow-sm">
-              <Scale size={15} className="text-yellow" />
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EAF3FF] shadow-sm">
+              <Scale size={15} className="text-[#007AFF]" />
             </div>
             {/* Typing bubble */}
             <div className="min-w-0 flex-1 rounded-3xl bg-white px-5 py-4 shadow-sm ring-1 ring-slate-200/70">

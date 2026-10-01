@@ -75,7 +75,7 @@ export default function ContextUsageIndicator({ tokenBudget = null }) {
           role="dialog"
           aria-label="Context usage"
           onMouseLeave={() => setOpen(false)}
-          className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-lg"
+          className="context-glass-panel absolute bottom-full left-0 z-20 mb-2 w-64 rounded-xl border p-3 text-left"
         >
           <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
             Context usage

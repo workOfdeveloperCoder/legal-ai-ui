@@ -42,10 +42,10 @@ export default function Dashboard({ user }) {
   }, []);
 
   return (
-    <div className="flex flex-col bg-[#F7F8FC] min-[1500px]:h-full min-[1500px]:min-h-0">
-      <div className="flex flex-col p-6 min-[1500px]:h-full min-[1500px]:min-h-0">
-        <div className="grid grid-cols-1 gap-6 min-[1500px]:grid-cols-12 min-[1500px]:min-h-0 min-[1500px]:flex-1 min-[1500px]:overflow-hidden">
-          <div className="flex min-h-0 flex-col gap-6 overflow-hidden min-[1500px]:col-span-8">
+    <div className="flex flex-col min-[1280px]:h-full min-[1280px]:min-h-0">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col p-5 sm:p-7 min-[1280px]:h-full min-[1280px]:min-h-0">
+        <div className="grid grid-cols-1 gap-5 min-[1280px]:grid-cols-12 min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-hidden">
+          <div className="flex min-h-0 flex-col gap-5 overflow-hidden min-[1280px]:col-span-8">
             <WelcomeCard data={dashboard?.welcome} user={user} />
 
             <StartChatBanner data={dashboard?.startChat} />
@@ -55,17 +55,17 @@ export default function Dashboard({ user }) {
             <RecentActivity data={dashboard?.recentActivity} />
           </div>
 
-          <div className="min-h-0 min-[1500px]:col-span-4">
-            <div className="flex flex-col gap-6 min-[1500px]:h-full">
-              <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
+          <div className="min-h-0 min-[1280px]:col-span-4">
+            <div className="flex flex-col gap-5 min-[1280px]:h-full">
+              <div className="min-[1280px]:h-1/3 min-[1280px]:min-h-0">
                 <MyMattersCard matters={dashboard?.matters || []} />
               </div>
 
-              <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
+              <div className="min-[1280px]:h-1/3 min-[1280px]:min-h-0">
                 <CalendarCard data={dashboard?.calendar} />
               </div>
 
-              <div className="min-[1500px]:h-1/3 min-[1500px]:min-h-0">
+              <div className="min-[1280px]:h-1/3 min-[1280px]:min-h-0">
                 <TasksCard data={dashboard?.tasks} />
               </div>
             </div>

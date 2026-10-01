@@ -14,7 +14,7 @@ const RING = {
 };
 
 const LEVEL_COLORS = {
-  normal: "#FFC853",
+  normal: "#007AFF",
   warning: "#F59E0B",
   critical: "#EA580C",
   limit: "#DC2626",
@@ -107,12 +107,12 @@ export default function TokenUsageCard({ variant = "card" }) {
           color={color}
           size={ring.size}
           stroke={ring.stroke}
-          track="rgba(255,255,255,0.12)"
-          labelClass="text-[10px] font-semibold text-white"
+          track="rgba(60,60,67,0.12)"
+          labelClass="text-[10px] font-semibold text-[#3A3A3C]"
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-white">Token Usage</p>
-          <p className="truncate text-xs text-gray-400">{meter.line}</p>
+          <p className="truncate text-[12px] font-medium text-[#3A3A3C]">Token usage</p>
+          <p className="truncate text-[11px] text-[#8E8E93]">{meter.line}</p>
         </div>
       </div>
     );

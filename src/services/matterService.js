@@ -44,7 +44,7 @@ function mapMatterConversation(item, matterId) {
   };
 }
 
-function mapMatter(matter) {
+function mapMatter(matter, agenda = []) {
   const userId = getStoredUser()?.id;
   const linkedConversations = listCachedConversations(userId).filter(
     (conversation) =>
@@ -63,9 +63,9 @@ function mapMatter(matter) {
     lastMessage: matter.description || "",
     conversations: linkedConversations,
     documents: [],
-    tasks: [],
+    tasks: agenda.filter((item) => String(item.matter_id) === String(matter.id) && item.kind === "task"),
     updatedAt: formatRelative(matter.updated_at) || "Just now",
-    nextHearing: null,
+    nextHearing: agenda.filter((item) => String(item.matter_id) === String(matter.id) && item.kind === "hearing" && item.status !== "cancelled" && item.due_at).sort((a, b) => new Date(a.due_at) - new Date(b.due_at))[0]?.due_at || null,
     createdAt: matter.created_at,
     lastOpenedAt: matter.last_opened_at,
     raw: matter,
@@ -78,18 +78,22 @@ export const matterService = {
       .getConversations({ refresh: true })
       .catch(() => {});
 
-    const data = await apiRequest("/matters", { method: "GET" });
+    const [data, agendaPayload] = await Promise.all([
+      apiRequest("/matters", { method: "GET" }),
+      apiRequest("/work-items", { method: "GET" }).catch(() => ({ items: [] })),
+    ]);
     await conversationsPromise;
 
     const items = Array.isArray(data) ? data : data?.items || [];
-    const matters = items.map(mapMatter);
+    const agenda = agendaPayload?.items || [];
+    const matters = items.map((item) => mapMatter(item, agenda));
      
     const withDocs = await Promise.all(
       matters.map(async (matter) =>{
           try{
             const documents = await documentService.getMatterDocuments(matter.id);
             return { ...matter, documents };
-          }catch(err){
+          }catch{
             return { ...matter,documents: []};
           }
       })
@@ -103,13 +107,16 @@ export const matterService = {
     } catch {
       // Matter detail still loads if conversation sync fails.
     }
-    const matter = await apiRequest(`/matters/${id}`, { method: "GET" });
-    const mapped = mapMatter(matter);
+    const [matter, agendaPayload] = await Promise.all([
+      apiRequest(`/matters/${id}`, { method: "GET" }),
+      apiRequest("/work-items", { method: "GET" }).catch(() => ({ items: [] })),
+    ]);
+    const mapped = mapMatter(matter, agendaPayload?.items || []);
 
     try{
       const documents = await documentService.getMatterDocuments(id);
       return { ...mapped, documents };
-    }catch(err){
+    }catch{
       return { ...mapped, documents: []};
     }
   },
@@ -122,7 +129,7 @@ export const matterService = {
     return items.map((item) => mapMatterConversation(item, matterId));
   },
 
-  async createMatter(title, _model, _nextHearing, description = null) {
+  async createMatter(title, _model, nextHearing, description = null) {
     const matter = await apiRequest("/matters", {
       method: "POST",
       body: JSON.stringify({
@@ -130,7 +137,26 @@ export const matterService = {
         description,
       }),
     });
-    return mapMatter(matter);
+    const mapped = mapMatter(matter);
+    if (nextHearing) {
+      try {
+        await apiRequest("/work-items", {
+          method: "POST",
+          body: JSON.stringify({
+            matter_id: matter.id,
+            kind: "hearing",
+            title: "Hearing",
+            due_at: new Date(nextHearing).toISOString(),
+          }),
+        });
+        mapped.nextHearing = new Date(nextHearing).toISOString();
+      } catch (error) {
+        // Matter creation has already committed; report the partial result
+        // without encouraging a duplicate matter retry.
+        mapped.warning = `Matter created, but the hearing could not be scheduled: ${error?.message || "request failed"}`;
+      }
+    }
+    return mapped;
   },
 
   async updateMatter(id, payload) {

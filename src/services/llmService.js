@@ -2,10 +2,30 @@ import { apiRequest } from "../lib/apiClient";
 
 let cachedStatus = null;
 let inFlight = null;
+let cachedModels = null;
+let modelsInFlight = null;
 
 export function resetLlmStatusCache() {
   cachedStatus = null;
   inFlight = null;
+  cachedModels = null;
+  modelsInFlight = null;
+}
+
+export async function getLlmModels({ refresh = false } = {}) {
+  if (!refresh && cachedModels) return cachedModels;
+  if (!refresh && modelsInFlight) return modelsInFlight;
+
+  modelsInFlight = apiRequest("/llm/models")
+    .then((data) => {
+      cachedModels = data;
+      return data;
+    })
+    .finally(() => {
+      modelsInFlight = null;
+    });
+
+  return modelsInFlight;
 }
 
 export async function getLlmStatus({ refresh = false } = {}) {

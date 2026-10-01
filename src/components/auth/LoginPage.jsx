@@ -36,16 +36,16 @@ export default function LoginPage({ onAuthenticated }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#F7F8FC] px-4">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/60">
+    <div className="login-page flex min-h-screen items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-[20px] border border-slate-200/90 bg-white p-8 shadow-[0_18px_55px_rgba(0,0,0,.08)]">
         <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow">
-            <Scale size={22} />
+          <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#EAF3FF] text-[#007AFF]">
+            <Scale size={21} />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-slate-900">Legal AI</h1>
-            <p className="text-sm text-slate-500">
-              Sign in to use the Legal Chatbot
+            <h1 className="text-[19px] font-semibold tracking-tight text-[#1D1D1F]">Juris</h1>
+            <p className="text-[13px] text-[#6E6E73]">
+              Pakistan legal workspace
             </p>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function LoginPage({ onAuthenticated }) {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-yellow-500"
+                  className="w-full rounded-xl border border-slate-300 bg-white/65 px-4 py-3 outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20"
                 />
               </div>
               <div>
@@ -73,7 +73,7 @@ export default function LoginPage({ onAuthenticated }) {
                   minLength={3}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-yellow-500"
+                  className="w-full rounded-xl border border-slate-300 bg-white/65 px-4 py-3 outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20"
                 />
               </div>
             </>
@@ -88,7 +88,7 @@ export default function LoginPage({ onAuthenticated }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-yellow-500"
+              className="w-full rounded-xl border border-slate-300 bg-white/65 px-4 py-3 outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20"
             />
           </div>
 
@@ -102,7 +102,7 @@ export default function LoginPage({ onAuthenticated }) {
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-yellow-500"
+              className="w-full rounded-xl border border-slate-300 bg-white/65 px-4 py-3 outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20"
             />
           </div>
 
@@ -115,7 +115,7 @@ export default function LoginPage({ onAuthenticated }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-yellow py-3 text-sm font-semibold text-slate-900 transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            className="primary-action w-full rounded-xl py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading
               ? "Please wait…"

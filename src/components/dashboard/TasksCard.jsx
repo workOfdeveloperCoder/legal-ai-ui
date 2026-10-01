@@ -1,6 +1,7 @@
 import { Circle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
+import { workspaceService } from "../../services/workspaceService";
 
 const priorityColors = {
     High: "bg-red-50 text-red-500",
@@ -11,17 +12,17 @@ const priorityColors = {
 export default function TasksCard({ data }) {
     const [completed, setCompleted] = useState([]);
 
-    const toggleTask = (id) => {
-        setCompleted((prev) =>
-            prev.includes(id)
-                ? prev.filter((taskId) => taskId !== id)
-                : [...prev, id]
-        );
+    const toggleTask = async (task) => {
+        const next = task.status !== "done";
+        try {
+            await workspaceService.updateWorkItem(task.id, { status: next ? "done" : "open" });
+            setCompleted((prev) => next ? [...new Set([...prev, task.id])] : prev.filter((id) => id !== task.id));
+        } catch (error) { console.error("Could not update task", error); }
     };
 
 
     return (
-      <div className="h-full min-h-0 flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="dashboard-panel tasks-panel h-full min-h-0 flex flex-col rounded-3xl border p-6 shadow-sm">
 
             {/* Header */}
             <div className="flex items-center justify-between shrink-0">
@@ -32,9 +33,7 @@ export default function TasksCard({ data }) {
                 </h2>
 
 
-                <div className="rounded-xl text-yellow-500 text-sm p-3">
-                   View All Tasks
-                </div>
+                    <a href="/matters" className="rounded-xl p-3 text-sm text-[#007AFF] hover:bg-[#EAF3FF]">View matters</a>
 
             </div>
 
@@ -45,7 +44,7 @@ export default function TasksCard({ data }) {
                     </p>
                 ) : (
                     (data || []).map((task) => {
-                        const isCompleted = completed.includes(task.id);
+                        const isCompleted = task.status === "done" || completed.includes(task.id);
 
                         return (
                             <motion.div
@@ -58,7 +57,8 @@ export default function TasksCard({ data }) {
                                 className="relative flex items-center gap-4 py-3"
                             >
                                 <button
-                                    onClick={() => toggleTask(task.id)}
+                                    onClick={() => toggleTask(task)}
+                                    aria-label={`${isCompleted ? "Reopen" : "Complete"} ${task.title}`}
                                     className="transition-colors"
                                 >
                                     <div className="flex h-7 w-7 items-center justify-center">
@@ -77,7 +77,7 @@ export default function TasksCard({ data }) {
                                                 >
                                                     <CheckCircle2
                                                         size={30}
-                                                        fill="#ffb300"
+                                                        fill="#007AFF"
                                                         className="text-white"
                                                     />
                                                 </motion.div>

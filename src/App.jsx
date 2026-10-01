@@ -82,7 +82,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background">
+    <div className="app-shell flex h-screen w-screen overflow-hidden">
       <Sidebar
         conversations={conversations}
         onSelect={() => {}}

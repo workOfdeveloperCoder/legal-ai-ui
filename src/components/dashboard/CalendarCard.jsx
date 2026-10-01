@@ -5,18 +5,16 @@ export default function CalendarCard({ data }) {
 
     return (
 
-        <div className="flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="dashboard-panel calendar-panel flex h-full flex-col rounded-3xl border p-6 shadow-sm">
 
             <div className="flex items-center justify-between shrink-0">
 
                  <h2 className="text-lg font-semibold text-slate-900">
-                    Calender
+                    Calendar
                 </h2>
 
 
-                <div className="rounded-xl text-yellow-500 text-sm p-3">
-                   View all Calender
-                </div>
+                <a href="/matters" className="rounded-xl p-3 text-sm text-[#007AFF] hover:bg-[#EAF3FF]">View matters</a>
 
             </div>
 
@@ -37,7 +35,7 @@ export default function CalendarCard({ data }) {
                             transition={{ duration: 0.15 }}
                             className="flex items-center gap-4"
                         >
-                            <DateBadge date={event.date} />
+                            <DateBadge date={event.date || event.due_at} />
 
                             <div className="flex-1">
                                 <h3 className="font-medium">

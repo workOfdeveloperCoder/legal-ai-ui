@@ -164,7 +164,7 @@ export default function EmptyState({ onSelectAction = null }) {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-4xl flex-col items-center justify-center px-6 py-10">
-      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-yellow shadow-lg">
+      <div className="flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#EAF3FF] text-[#007AFF]">
         <Scale size={28} className="text-slate-900" />
       </div>
 

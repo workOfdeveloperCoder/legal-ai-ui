@@ -884,15 +884,33 @@ export const chatService = {
 
     if (!matterId) return conversations;
 
-    const hasMatter = conversations.some(
-      (conversation) => conversation.matter?.id === String(matterId)
-    );
-
-    if (!hasMatter) return conversations;
-
     return conversations.filter(
       (conversation) => conversation.matter?.id !== String(matterId)
     );
+  },
+
+  async setConversationMatter(conversationId, matterId) {
+    const userId = currentUserId();
+    let id = String(conversationId);
+    if (isDraftId(id)) {
+      id = await this.ensureServerConversation(id);
+    }
+    const existing = getCachedConversation(userId, id);
+    const data = await apiRequest(`/conversations/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ matter_id: matterId || null }),
+    });
+    const nextMatter = matterId ? { id: String(matterId) } : null;
+    upsertCachedConversation(userId, {
+      id,
+      title: data?.title || existing?.title || "New Conversation",
+      lastMessage: existing?.messages?.at(-1)?.content || existing?.lastMessage || "",
+      updatedAt: existing?.updatedAt || "Just now",
+      matter: nextMatter,
+      isPinned: Boolean(data?.is_pinned ?? existing?.isPinned),
+      isDraft: false,
+    }, existing ? { ...existing, matter: nextMatter } : null);
+    return { id, matter: nextMatter };
   },
 
   /**
@@ -1074,6 +1092,7 @@ export const chatService = {
       documentId = null,
       quickAction = null,
       webSearch = false,
+      model = null,
       signal,
     } = options;
     const userId = currentUserId();
@@ -1138,6 +1157,7 @@ export const chatService = {
     if (webSearch) {
       payload.web_search = true;
     }
+    if (model) payload.model = model;
 
     try {
       const response = await apiRequest("/chat", {
@@ -1250,6 +1270,7 @@ export const chatService = {
       documentId = null,
       quickAction = null,
       webSearch = false,
+      model = null,
       signal,
       onEvent,
     } = options;
@@ -1333,6 +1354,7 @@ export const chatService = {
     }
     if (quickAction) payload.quick_action = quickAction;
     if (webSearch) payload.web_search = true;
+    if (model) payload.model = model;
 
     const patchAssistant = (fields) => {
       const messages = [...(detail.messages || [])];

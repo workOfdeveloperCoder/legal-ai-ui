@@ -11,7 +11,7 @@ export default function AddMatterModal({
         <AnimatePresence>
             {open && (
                 <motion.div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+                    className="liquid-modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -20,7 +20,7 @@ export default function AddMatterModal({
                 >
                     <motion.div
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full max-w-xl rounded-2xl bg-white shadow-2xl"
+                        className="liquid-modal-panel w-full max-w-xl overflow-hidden rounded-[22px]"
                         initial={{
                             opacity: 0,
                             scale: 0.98,

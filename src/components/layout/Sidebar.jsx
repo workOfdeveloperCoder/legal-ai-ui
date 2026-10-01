@@ -2,18 +2,19 @@ import {
     Plus,
     Folder,
     MessageSquare,
-    Settings,
+    UserRound,
     Scale,
     MoreHorizontal,
     LayoutDashboard,
     Pin,
 } from "lucide-react";
 import { motion, LayoutGroup } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { chatService } from "../../services/chatService";
 import MattersMenu from "../menu/MattersMenu";
 import TokenUsageCard from "../dashboard/TokenUsageCard";
+import { apiRequest } from "../../lib/apiClient";
 
 export default function Sidebar({
     conversations,
@@ -23,9 +24,16 @@ export default function Sidebar({
     onClose,
 }) {
     const [selectedConversation, setSelectedConversation] = useState(null);
+    const [matters, setMatters] = useState([]);
 
     const navigate = useNavigate();
     const { pathname } = useLocation();
+
+    useEffect(() => {
+        let active = true;
+        apiRequest("/matters", { method: "GET" }).then((data) => { if (active) setMatters(Array.isArray(data) ? data : data?.items || []); }).catch(() => {});
+        return () => { active = false; };
+    }, [pathname]);
 
     const sortedConversations = useMemo(() => {
         const list = Array.isArray(conversations) ? [...conversations] : [];
@@ -58,12 +66,12 @@ export default function Sidebar({
             <div  className={`
                 fixed left-0 top-0 z-50
                 h-screen w-[280px]
-                bg-[#23232F]
-                border-r border-white/5
+                app-sidebar-material
+                border-r border-slate-200/80
                 flex flex-col
                 transition-transform duration-300
 
-                ${isOpen ? "d-none" : "d-block"}
+                ${isOpen ? "translate-x-0" : "-translate-x-full"}
 
                 min-[1000px]:static
                 min-[1000px]:h-full
@@ -77,20 +85,20 @@ export default function Sidebar({
 
                     <div className="flex items-center gap-3">
 
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-[#007AFF] shadow-sm ring-1 ring-slate-200/80">
 
-                            <Scale />
+                            <Scale size={19} />
 
                         </div>
 
                         <div>
 
-                            <h1 className="font-bold text-white">
-                                Legal AI
+                            <h1 className="text-[15px] font-semibold tracking-tight text-[#1D1D1F]">
+                                Juris
                             </h1>
 
-                            <p className="text-xs text-gray-400">
-                                Pakistan Assistant
+                            <p className="text-[11px] text-[#6E6E73]">
+                                Legal workspace
                             </p>
 
                         </div>
@@ -114,7 +122,7 @@ export default function Sidebar({
                                 );
                             }
                         }}
-                        className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow py-3 hover:bg-yellow"
+                        className="primary-action mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-medium shadow-sm transition hover:shadow"
                     >
 
                         <Plus size={18} />
@@ -127,7 +135,7 @@ export default function Sidebar({
 
                 {/* Recent */}
 
-                <div className="px-4 text-xs uppercase text-gray-500">
+                <div className="px-5 text-[10px] font-semibold uppercase tracking-[.08em] text-[#8E8E93]">
 
                     Recent Chats
 
@@ -144,12 +152,12 @@ export default function Sidebar({
                                 onClick={() => openConversation(conversation)}
                                 whileHover={{ x: 4 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="group relative mx-3 mb-2 group-hover:opacity-100 hover:bg-white/10 cursor-pointer overflow-hidden rounded-xl"
+                                className="group relative mx-2 mb-1 cursor-pointer overflow-hidden rounded-[10px] hover:bg-black/[.045]"
                             >
                                 {pathname === `/conversation/${conversation.id}` && (
                                     <motion.div
                                         layoutId="sidebar-active"
-                                        className="absolute inset-0 rounded-xl bg-white/10"
+                                        className="absolute inset-0 rounded-[10px] bg-black/[.06]"
                                         transition={{
                                             type: "spring",
                                             stiffness: 500,
@@ -162,15 +170,15 @@ export default function Sidebar({
                                     {conversation.isPinned ? (
                                         <Pin
                                             size={14}
-                                            className="shrink-0 text-yellow-400"
+                                            className="shrink-0 text-[#007AFF]"
                                         />
                                     ) : (
                                     <MessageSquare
                                         size={16}
                                         className={
                                             pathname === `/conversation/${conversation.id}`
-                                                ? "text-yellow-400"
-                                                : "text-gray-400"
+                                                ? "text-[#007AFF]"
+                                                : "text-[#8E8E93]"
                                         }
                                     />
                                     )}
@@ -179,7 +187,7 @@ export default function Sidebar({
 
                                         <div className="flex items-center justify-between">
 
-                                            <p className="truncate text-sm font-medium text-white">
+                                            <p className="truncate text-[13px] font-medium text-[#1D1D1F]">
                                                 {conversation.title}
                                             </p>
 
@@ -190,9 +198,9 @@ export default function Sidebar({
                                                         e.stopPropagation();
                                                         setSelectedConversation({ anchor: e.currentTarget, conversation});
                                                     }}
-                                                    className="rounded-lg p-1 opacity-0 transition group-hover:opacity-100 hover:bg-white/10"
+                                                    className="rounded-lg p-1 opacity-0 transition group-hover:opacity-100 hover:bg-black/[.06]"
                                                 >
-                                                <MoreHorizontal size={16} className="text-gray-300" />
+                                                <MoreHorizontal size={16} className="text-[#6E6E73]" />
 
                                                 </button>
                                         
@@ -201,7 +209,7 @@ export default function Sidebar({
 
                                         </div>
 
-                                        <p className="truncate text-xs text-yellow-300">
+                                        <p className="truncate text-[11px] text-[#8E8E93]">
                                             {conversation.matter?.title}
                                         </p>
 
@@ -210,6 +218,13 @@ export default function Sidebar({
                                 
                             </motion.div>
                         ))}
+                        {matters.length > 0 && <section className="mx-3 mt-5 border-t border-slate-200 pt-3">
+                            <div className="mb-2 flex items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-[.08em] text-[#8E8E93]"><span>Matters</span><button onClick={() => { navigate("/matters"); onClose?.(); }} className="text-[#007AFF] hover:underline">View all</button></div>
+                            {matters.slice(0, 8).map((matter) => <div key={matter.id}>
+                                <button onClick={() => { navigate(`/matter/${matter.id}`); onClose?.(); }} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] ${pathname === `/matter/${matter.id}` ? "bg-black/[.06] text-[#1D1D1F]" : "text-[#3A3A3C] hover:bg-black/[.04]"}`}><Folder size={15} className="shrink-0 text-[#007AFF]"/><span className="truncate">{matter.title}</span></button>
+                                {sortedConversations.filter((chat) => String(chat.matter?.id) === String(matter.id)).slice(0, 2).map((chat) => <button key={chat.id} onClick={() => openConversation(chat)} className="flex w-full items-center gap-2 truncate py-1.5 pl-9 pr-3 text-left text-[11px] text-[#6E6E73] hover:text-[#1D1D1F]"><MessageSquare size={12}/><span className="truncate">{chat.title}</span></button>)}
+                            </div>)}
+                        </section>}
                         <MattersMenu
                             selectedConversation={selectedConversation}
                             onClose={() => setSelectedConversation(null)}
@@ -221,7 +236,7 @@ export default function Sidebar({
 
                 {/* Bottom */}
 
-                <div className="border-t border-white/5 p-4">
+                <div className="border-t border-slate-200/80 p-3">
 
                     <button
                         onClick={() => {navigate("/dashboard"); onClose?.();}}
@@ -229,8 +244,8 @@ export default function Sidebar({
                             flex w-full items-center gap-3 rounded-xl px-4 py-3 transition
                             ${
                                 pathname === "/dashboard"
-                                    ? "bg-white/10 text-white"
-                                    : "text-gray-300 hover:bg-white/5"
+                                    ? "bg-black/[.06] text-[#1D1D1F]"
+                                    : "text-[#6E6E73] hover:bg-black/[.04]"
                             }
                         `}
                     >
@@ -243,8 +258,8 @@ export default function Sidebar({
                         className={`cursor-pointer flex w-full items-center gap-3 rounded-xl px-4 py-3 transition
                             ${
                                 pathname === "/matters"
-                                    ? "bg-background/10 text-white"
-                                    : "text-gray-300 hover:bg-background/5"
+                                ? "bg-black/[.06] text-[#1D1D1F]"
+                                : "text-[#6E6E73] hover:bg-black/[.04]"
                             }`}
                     >
 
@@ -254,13 +269,12 @@ export default function Sidebar({
 
                     </button>
 
-                    <button
-                        className="cursor-pointer mt-2 flex w-full items-center gap-3 rounded-xl px-4 py-3 text-gray-300 hover:bg-background/5"
-                    >
+                    <button onClick={() => {navigate("/profile"); onClose?.();}}
+                        className="mt-1 flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-[#6E6E73] hover:bg-black/[.04]">
 
-                        <Settings size={18} />
+                        <UserRound size={18} />
 
-                        Settings
+                        Profile
 
                     </button>
 

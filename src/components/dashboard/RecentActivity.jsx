@@ -5,10 +5,10 @@ export default function RecentActivity({ data }) {
     return (
     <div className="flex flex-col flex-1 min-[1500px]:min-h-0">
 
-        <h2 className="text-lg py-2 font-semibold">
+        <h2 className="py-2 text-base font-medium text-slate-600">
             Recent Activity
         </h2>
-       <div className="flex-1 overflow-y-auto hide-scrollbar rounded-3xl border border-slate-200 bg-white shadow-[inset_0_10px_10px_-10px_rgba(0,0,0,0.15),inset_0_-10px_10px_-10px_rgba(0,0,0,0.15)]">
+       <div className="activity-panel flex-1 overflow-y-auto hide-scrollbar rounded-3xl border shadow-[inset_0_10px_10px_-10px_rgba(0,0,0,0.08),inset_0_-10px_10px_-10px_rgba(0,0,0,0.08)]">
 
             {(data || []).length === 0 ? (
                 <p className="p-6 text-center text-sm text-slate-400">
@@ -30,11 +30,11 @@ export default function RecentActivity({ data }) {
                     </div>
 
                     <div className="flex-1">
-                        <h4 className="font-medium">{item.title}</h4>
-                        <p className="text-sm text-muted">{item.description}</p>
+                        <h4 className="text-sm font-medium text-slate-600">{item.title}</h4>
+                        <p className="text-xs text-slate-500">{item.description}</p>
                     </div>
 
-                    <span className="text-xs text-muted">
+                    <span className="text-[11px] text-slate-400">
                         {item.time}
                     </span>
                 </motion.div>

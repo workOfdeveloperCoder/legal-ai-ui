@@ -1,6 +1,4 @@
-import { Sparkle } from "lucide-react";
-
-export default function WelcomeCard({ data, user }) {
+export default function WelcomeCard({ user }) {
 
     const firstName = user?.name?.split(" ")[0] ?? "Guest";
 
@@ -24,24 +22,18 @@ export default function WelcomeCard({ data, user }) {
 
     return (
 
-        <div className="rounded-3xl px-4">
+        <div className="px-1">
 
             <div className="flex">
 
                 <div>
 
-                    <h1 className="mt-2 text-4xl flex font-bold ">
-                        {getGreeting() }, { firstName }!
-                         <Sparkle size={40}  
-                            fill="currentColor"
-                            className="ml-3 text-yellow-500"
-                            stroke="white"
-                            strokeWidth={1}
-                        />
+                    <h1 className="mt-2 flex text-[30px] font-semibold tracking-tight text-[#1D1D1F]">
+                        {getGreeting()}, {firstName}
                     </h1>
 
-                    <p className="mt-3 max-w-xl text-slate-700">
-                        How can I help you with your legal work today?
+                    <p className="mt-2 max-w-xl text-[14px] text-[#6E6E73]">
+                        Research Pakistani law with answers grounded in cited authorities.
                        
                     </p>
 

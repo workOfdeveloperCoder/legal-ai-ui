@@ -197,7 +197,7 @@ export default function MattersMenu({
                   type="button"
                   disabled={busy}
                   onClick={() => void handleRenameSubmit()}
-                  className="flex-1 rounded-lg bg-[#23232F] px-2 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="primary-action flex-1 rounded-lg px-2 py-1.5 text-xs font-medium disabled:opacity-50"
                 >
                   Save
                 </button>

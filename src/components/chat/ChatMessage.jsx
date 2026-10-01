@@ -77,7 +77,7 @@ function SourceCard({ source, onOpenDocument }) {
   return (
     <div className="overflow-hidden rounded-xl border border-black/5 bg-white/80">
       <div className="flex items-start gap-2.5 px-3 py-2.5">
-        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-yellow/30 text-slate-800">
+        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#EAF3FF] text-[#0056B3]">
           <BookOpen size={12} />
         </div>
 
@@ -209,12 +209,20 @@ function SourceCard({ source, onOpenDocument }) {
   );
 }
 
+function sanitizeVisibleAnswer(value) {
+  if (!value) return "";
+  const marker = /(?:^|\n)\s*(?:here(?:'|’)s a thinking process|thinking process|draft answer(?:\s*\(mental iteration\))?|analyze user input|review retrieved evidence|check against rules)\s*:?/i;
+  const match = marker.exec(value);
+  return (match ? value.slice(0, match.index) : value).trim();
+}
+
 export default function ChatMessage({
   message,
   matterId = null,
   conversationId = null,
 }) {
   const isUser = message.role === "user";
+  const displayContent = isUser ? message.content : sanitizeVisibleAnswer(message.content);
   const hasError = message.status === "error";
   const [activeSource, setActiveSource] = useState(null);
   const [ttsReady, setTtsReady] = useState(false);
@@ -243,7 +251,7 @@ export default function ChatMessage({
   }, []);
 
   async function handleSpeak() {
-    if (!message.content || message.streaming) return;
+    if (!displayContent || message.streaming) return;
     if (speaking) {
       speakAbortRef.current?.abort();
       stopSpeech();
@@ -255,7 +263,7 @@ export default function ChatMessage({
     const controller = new AbortController();
     speakAbortRef.current = controller;
     try {
-      await playSpeech(message.content, { signal: controller.signal });
+      await playSpeech(displayContent, { signal: controller.signal });
     } catch (error) {
       if (error?.name !== "AbortError") {
         setSpeakError(describeVoiceError(error));
@@ -276,7 +284,7 @@ export default function ChatMessage({
         <div
           className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
             isUser
-              ? "bg-yellow text-white"
+              ? "bg-[#007AFF] text-white"
               : "bg-gray-200 text-gray-700"
           }`}
         >
@@ -286,7 +294,7 @@ export default function ChatMessage({
         <div
           className={`min-w-0 overflow-hidden rounded-3xl px-4 py-3 shadow-sm ${
             isUser
-              ? "max-w-[85%] bg-[#FFE2A3] text-slate-800"
+              ? "max-w-[85%] bg-[#EAF3FF] text-[#1D1D1F]"
               : "max-w-full flex-1 bg-white text-slate-800 ring-1 ring-slate-200/70"
           } ${hasError ? "ring-1 ring-red-300" : ""}`}
         >
@@ -313,25 +321,25 @@ export default function ChatMessage({
                   </div>
                 )}
                 <p className="m-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                  {message.content}
+                  {displayContent}
                 </p>
               </>
             ) : (
               <>
                 {(message.thinkingActive ||
                   message.thinking ||
-                  (message.streaming && !message.content)) && (
+                  (message.streaming && !displayContent)) && (
                   <ThinkingBlock
                     text={message.thinking || ""}
                     active={Boolean(
                       message.thinkingActive ||
-                        (message.streaming && !message.content)
+                        (message.streaming && !displayContent)
                     )}
                     statusLabel={message.statusDetail || ""}
                     startedAt={message.thinkingStartedAt || null}
                   />
                 )}
-                {(message.content ||
+                {(displayContent ||
                   (message.streaming && !message.thinkingActive)) && (
                   <div
                     className="
@@ -350,19 +358,19 @@ export default function ChatMessage({
                     {message.streaming ? (
                       <>
                         <div className="min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                          {message.content}
+                          {displayContent}
                           <span className="stream-caret" aria-hidden="true" />
                         </div>
                       </>
-                    ) : message.content ? (
+                    ) : displayContent ? (
                       <ReactMarkdown>
-                        {withHardBreaks(message.content)}
+                        {withHardBreaks(displayContent)}
                       </ReactMarkdown>
                     ) : null}
                   </div>
                 )}
                 {!message.streaming &&
-                  !message.content &&
+                  !displayContent &&
                   !hasError &&
                   !message.thinkingActive && (
                     <p className="m-0 text-[14px] leading-6 text-slate-600">
@@ -419,7 +427,7 @@ export default function ChatMessage({
             </div>
           )}
 
-          {!isUser && !message.streaming && message.content && ttsReady && (
+          {!isUser && !message.streaming && displayContent && ttsReady && (
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"

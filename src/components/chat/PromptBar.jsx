@@ -1,5 +1,16 @@
-import { Paperclip, Mic, ArrowUp, Square, X, FileText, Globe } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  Paperclip,
+  Mic,
+  ArrowUp,
+  Square,
+  X,
+  FileText,
+  Globe,
+  ChevronDown,
+  Sparkles,
+  Check,
+} from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ACCEPTED_UPLOAD_TYPES,
   isAllowedUploadFile,
@@ -16,6 +27,7 @@ import {
   transcribeWav,
 } from "../../services/voiceService";
 import ContextUsageIndicator from "./ContextUsageIndicator";
+import { getLlmModels } from "../../services/llmService";
 
 const WAVE_BARS = 36;
 
@@ -51,7 +63,13 @@ export default function PromptBar({
   const [webSearchAvailable, setWebSearchAvailable] = useState(true);
   const [webSearch, setWebSearch] = useState(false);
   const [webSearchProvider, setWebSearchProvider] = useState(null);
+  const [modelOptions, setModelOptions] = useState([]);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(
+    () => window.localStorage.getItem("juris.selectedChatModel") || ""
+  );
   const fileInputRef = useRef(null);
+  const modelPickerRef = useRef(null);
   const textareaRef = useRef(null);
   const recorderRef = useRef(null);
   const finishingRef = useRef(false);
@@ -61,6 +79,16 @@ export default function PromptBar({
   const voiceBusy = dictating || transcribing;
   const canSend = Boolean(input.trim() || files.length) && !busy && !voiceBusy;
   const mic = microphoneAvailability();
+  const activeModel = modelOptions.find((model) => model.id === selectedModel);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "40px";
+    const nextHeight = Math.min(textarea.scrollHeight, 160);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 160 ? "auto" : "hidden";
+  }, [input, dictating, transcribing]);
 
   useEffect(() => {
     let cancelled = false;
@@ -71,6 +99,48 @@ export default function PromptBar({
       setWebSearchProvider(settings.provider);
       if (!settings.enabled) setWebSearch(false);
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!modelPickerOpen) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!modelPickerRef.current?.contains(event.target)) {
+        setModelPickerOpen(false);
+      }
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setModelPickerOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [modelPickerOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLlmModels()
+      .then((data) => {
+        if (cancelled) return;
+        const options = Array.isArray(data?.models) ? data.models : [];
+        setModelOptions(options);
+        const saved = window.localStorage.getItem("juris.selectedChatModel");
+        const preferred = options.some((item) => item.id === saved)
+          ? saved
+          : data?.default_model || options[0]?.id || "";
+        setSelectedModel(preferred);
+        if (preferred) {
+          window.localStorage.setItem("juris.selectedChatModel", preferred);
+        }
+      })
+      .catch((error) => {
+        console.warn("Could not load available chat models:", error);
+      });
     return () => {
       cancelled = true;
     };
@@ -158,7 +228,10 @@ export default function PromptBar({
     setFiles([]);
     setAttachError("");
     setDictateError("");
-    await onSend?.(text, attachments, { webSearch: useWebSearch });
+    await onSend?.(text, attachments, {
+      webSearch: useWebSearch,
+      model: selectedModel || null,
+    });
   }
 
   const handleKeyDown = (e) => {
@@ -255,7 +328,7 @@ export default function PromptBar({
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="rounded-[28px] border border-slate-200/80 bg-white px-3 py-2 shadow-sm flex">
+      <div className="flex flex-col rounded-[28px] border border-slate-200/80 bg-white px-3 py-2 shadow-sm">
         {files.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2 px-1 pt-1">
             {files.map((file, index) => (
@@ -282,7 +355,7 @@ export default function PromptBar({
         )}
 
         {dictating || transcribing ? (
-          <div className="flex min-h-[40px] w-[50%] items-center gap-3 px-2">
+          <div className="flex min-h-[40px] w-full items-center gap-3 px-2">
             <div className="flex h-8 flex-1 items-center gap-[2px]">
               {bars.map((value, index) => (
                 <span
@@ -305,6 +378,7 @@ export default function PromptBar({
             ref={textareaRef}
             rows={1}
             value={input}
+            aria-label="Message"
             disabled={busy}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -316,12 +390,87 @@ export default function PromptBar({
               }
             }}
             placeholder={placeholder}
-            className="max-h-40 min-h-[40px] w-[50%] resize-none border-0 bg-transparent px-2 py-2 text-[15px] leading-[1.55] text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
+            className="block min-h-[40px] max-h-40 w-full resize-none overflow-y-hidden border-0 bg-transparent px-2 py-2 text-[15px] leading-[1.55] text-slate-800 outline-none placeholder:text-slate-400 disabled:opacity-60"
           />
         )}
 
-        <div className="flex w-[50%] items-center justify-end pb-1">
+        <div className="flex w-full items-center justify-between pb-1">
           <div className="flex items-center gap-1">
+            {modelOptions.length > 1 && (
+              <div ref={modelPickerRef} className="relative">
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={modelPickerOpen}
+                  aria-label={`Choose model. Current model: ${activeModel?.name || selectedModel}`}
+                  disabled={busy || voiceBusy}
+                  onClick={() => setModelPickerOpen((open) => !open)}
+                  className="flex h-8 max-w-[210px] items-center gap-1.5 rounded-xl px-2.5 text-[12px] font-medium text-slate-600 transition hover:bg-white/70 hover:text-slate-900 disabled:opacity-50"
+                  title={activeModel?.description || "Choose a model for your next answer"}
+                >
+                  <Sparkles size={14} className="shrink-0 text-blue-500" />
+                  <span className="truncate">{activeModel?.name || "Model"}</span>
+                  <ChevronDown
+                    size={12}
+                    className={`shrink-0 text-slate-400 transition-transform ${modelPickerOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {modelPickerOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Choose a chat model"
+                    className="context-glass-panel absolute bottom-full left-0 z-30 mb-3 w-[min(320px,calc(100vw-2.5rem))] rounded-2xl border p-2 text-left"
+                  >
+                    <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-400">
+                      Choose a model
+                    </p>
+                    {modelOptions.map((model) => {
+                      const selected = model.id === selectedModel;
+                      return (
+                        <button
+                          key={model.id}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={selected}
+                          onClick={() => {
+                            setSelectedModel(model.id);
+                            window.localStorage.setItem(
+                              "juris.selectedChatModel",
+                              model.id
+                            );
+                            setModelPickerOpen(false);
+                          }}
+                          className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition ${
+                            selected
+                              ? "bg-blue-500/10 text-blue-900"
+                              : "text-slate-700 hover:bg-white/60"
+                          }`}
+                        >
+                          <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${selected ? "bg-blue-500/12 text-blue-600" : "bg-white/65 text-slate-500"}`}>
+                            <Sparkles size={15} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2 text-[13px] font-semibold">
+                              <span className="truncate">{model.name}</span>
+                              {model.is_default && (
+                                <span className="shrink-0 rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-medium text-slate-500">
+                                  Default
+                                </span>
+                              )}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
+                              {model.description}
+                            </span>
+                          </span>
+                          {selected && <Check size={15} className="shrink-0 text-blue-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -395,7 +544,7 @@ export default function PromptBar({
                 type="button"
                 onClick={onStop}
                 disabled={uploading}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-black disabled:opacity-50"
+                className="primary-action flex h-8 w-8 items-center justify-center rounded-full text-white transition disabled:opacity-50"
                 title={uploading ? "Uploading…" : "Stop request"}
               >
                 <Square size={11} fill="currentColor" />
@@ -405,7 +554,7 @@ export default function PromptBar({
                 type="button"
                 disabled={!canSend}
                 onClick={send}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="primary-action flex h-8 w-8 items-center justify-center rounded-full text-white transition disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 <ArrowUp size={15} />
               </button>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   ChevronRight,
   Upload,
@@ -40,11 +40,6 @@ export default function MatterHeader({
   const isPinned = Boolean(matter?.isPinned);
   const isArchived =
     String(matter?.status || "").toLowerCase() === "archived";
-
-  useEffect(() => {
-    setTitleDraft(matter?.title || "");
-    setEditing(false);
-  }, [matter?.id, matter?.title]);
 
   async function handleFiles(fileList) {
     const files = Array.from(fileList || []);
@@ -144,7 +139,7 @@ export default function MatterHeader({
   }
 
   return (
-    <div className="border-b border-[#ECECEC] bg-white px-8 py-5">
+    <div className="matter-header-glass border-b px-8 py-5">
       <div className="mb-4 flex items-center gap-2 text-[13px] text-[#8B8B96]">
         <span>Home</span>
         <ChevronRight size={14} />
@@ -172,7 +167,7 @@ export default function MatterHeader({
                       setTitleDraft(matter?.title || "");
                     }
                   }}
-                  className="min-w-[220px] rounded-xl border border-slate-200 px-3 py-2 text-[22px] font-semibold text-[#202124] outline-none focus:border-slate-400"
+                  className="min-w-[220px] rounded-xl border border-slate-200 bg-white/65 px-3 py-2 text-[22px] font-semibold text-[#202124] outline-none focus:border-[#007AFF] focus:ring-2 focus:ring-[#007AFF]/20"
                   maxLength={120}
                 />
                 <button
@@ -205,17 +200,17 @@ export default function MatterHeader({
                   disabled={busy || !matterId}
                   onClick={() => void togglePin()}
                   title={isPinned ? "Unpin matter" : "Pin matter"}
-                  className="rounded-lg p-1.5 text-[#F6B73C] hover:bg-amber-50 disabled:opacity-50"
+                  className="rounded-lg p-1.5 text-[#007AFF] hover:bg-[#EAF3FF] disabled:opacity-50"
                 >
                   <Star
                     size={18}
-                    className={isPinned ? "fill-[#F6B73C]" : ""}
+                    className={isPinned ? "fill-[#007AFF]" : ""}
                   />
                 </button>
                 <button
                   type="button"
                   disabled={busy || !matterId}
-                  onClick={() => setEditing(true)}
+                  onClick={() => { setTitleDraft(matter?.title || ""); setEditing(true); }}
                   title="Rename matter"
                   className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 disabled:opacity-50"
                 >
@@ -308,7 +303,7 @@ export default function MatterHeader({
           <button
             type="button"
             onClick={onNewChat}
-            className="flex h-11 items-center gap-2 rounded-xl bg-[#F6B73C] px-5 text-sm font-semibold text-black hover:brightness-95"
+            className="primary-action flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold"
           >
             <Plus size={16} />
             New Chat

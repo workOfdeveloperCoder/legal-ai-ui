@@ -77,7 +77,7 @@ function mapChatQuickActions(payload) {
 }
 
 async function loadFromBackend() {
-  const [matters, conversations, activityPayload, quickActionsPayload] =
+  const [matters, conversations, activityPayload, quickActionsPayload, summary] =
     await Promise.all([
       matterService.getMatters().catch(() => []),
       chatService.getConversations({ refresh: true }).catch(() => []),
@@ -85,6 +85,7 @@ async function loadFromBackend() {
         items: [],
       })),
       getQuickActions().catch(() => null),
+      apiRequest("/dashboard/summary", { method: "GET" }).catch(() => null),
     ]);
 
   const activityItems = Array.isArray(activityPayload)
@@ -113,10 +114,16 @@ async function loadFromBackend() {
       id: matter.id,
       title: matter.title,
       lastMessage: matter.description || matter.lastMessage || "",
-      nextHearing: matter.nextHearing || null,
+      nextHearing: summary?.calendar?.find((event) => String(event.matter_id) === String(matter.id))?.due_at || null,
     })),
-    calendar: [],
-    tasks: [],
+    calendar: (summary?.calendar || []).map((event) => ({
+      ...event, date: event.due_at, type: "hearing", matter: event.matter?.title || "Matter",
+      time: event.due_at ? new Date(event.due_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "",
+    })),
+    tasks: (summary?.tasks || []).map((task) => ({
+      ...task, matter: task.matter?.title || "Matter",
+      priority: task.priority ? `${task.priority[0].toUpperCase()}${task.priority.slice(1)}` : "Medium",
+    })),
   };
 }
 

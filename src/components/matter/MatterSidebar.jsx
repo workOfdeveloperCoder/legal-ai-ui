@@ -35,7 +35,7 @@ export default function MatterSidebar({
   actionBusy = false,
 }) {
   return (
-    <aside className="w-[320px] border-l border-[#ECECEC] bg-white p-6">
+    <aside className="matter-header-glass w-[320px] border-l p-6">
       <div className="mb-5 flex items-center justify-between">
         <h3 className="text-[18px] font-semibold text-[#202124]">
           Documents
@@ -54,11 +54,11 @@ export default function MatterSidebar({
           {documents.map((doc) => (
             <div
               key={doc.id}
-              className="rounded-xl border border-[#ECECEC] bg-[#FCFAF6] p-3"
+              className="rounded-xl border border-blue-100/80 bg-[#EEF5FF]/65 p-3"
             >
               <div className="flex items-start gap-2">
-                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#FFF3DA]">
-                  <FileText size={14} className="text-[#D39A1F]" />
+                <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#DDEEFF]">
+                  <FileText size={14} className="text-[#007AFF]" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-[#202124]">

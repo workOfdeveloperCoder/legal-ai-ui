@@ -2,25 +2,87 @@ import { Folder, MoreHorizontal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { chatService } from "../../services/chatService";
+import { matterService } from "../../services/matterService";
 import { useNavigate } from "react-router-dom";
 
 import dayjs from "dayjs";
 
-export default function MatterCard({  matter }) {
+export default function MatterCard({ matter, onClose, onMatterChanged }) {
 
     const [open, setOpen] = useState(false)
     const menuRef = useRef(null);
     const [availableConversation, setAvailableConversation] = useState(null);
     const [showSubmenu, setShowSubmenu] = useState(false);
     const [submenuPosition, setSubmenuPosition] = useState("right");
+    const [actionBusy, setActionBusy] = useState(false);
+    const [menuError, setMenuError] = useState("");
     const submenuRef = useRef(null);
     const navigate = useNavigate();
 
-    async function loadUnlistedConversations(matterId) {
+    async function loadUnlistedConversations() {
 
-        const data = await chatService.getAvailableConversations();
-        setAvailableConversation(data)
-        setOpen(true)
+        setMenuError("");
+        try {
+            const data = await chatService.getAvailableConversations(matter.id);
+            setAvailableConversation(data);
+            setOpen(true);
+        } catch (error) {
+            setMenuError(error?.message || "Could not load conversations.");
+            setOpen(true);
+        }
+    }
+
+    async function renameMatter() {
+        const title = window.prompt("Rename matter", matter.title);
+        if (title == null || !title.trim()) return;
+        setActionBusy(true);
+        setMenuError("");
+        try {
+            await matterService.updateMatter(matter.id, { title: title.trim() });
+            setOpen(false);
+            onMatterChanged?.();
+        } catch (error) {
+            setMenuError(error?.message || "Could not rename matter.");
+        } finally { setActionBusy(false); }
+    }
+
+    async function toggleArchive() {
+        setActionBusy(true);
+        setMenuError("");
+        try {
+            await matterService.updateMatter(matter.id, {
+                status: matter.status === "archived" ? "active" : "archived",
+            });
+            setOpen(false);
+            onMatterChanged?.();
+        } catch (error) {
+            setMenuError(error?.message || "Could not update matter status.");
+        } finally { setActionBusy(false); }
+    }
+
+    async function deleteMatter() {
+        if (!window.confirm(`Delete matter “${matter.title}”? This cannot be undone.`)) return;
+        setActionBusy(true);
+        setMenuError("");
+        try {
+            await matterService.deleteMatter(matter.id);
+            setOpen(false);
+            onMatterChanged?.();
+        } catch (error) {
+            setMenuError(error?.message || "Could not delete matter.");
+        } finally { setActionBusy(false); }
+    }
+
+    async function linkConversation(conversation) {
+        setActionBusy(true);
+        setMenuError("");
+        try {
+            await chatService.setConversationMatter(conversation.id, matter.id);
+            setOpen(false);
+            onMatterChanged?.();
+        } catch (error) {
+            setMenuError(error?.message || "Could not link conversation.");
+        } finally { setActionBusy(false); }
     }
 
     useEffect(() => {
@@ -88,7 +150,7 @@ export default function MatterCard({  matter }) {
                 stiffness:400,
                 damping:25
             }}
-            className="group rounded-xl border border-[#ECECEC] bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg "
+            className="matter-card-glass group rounded-xl border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg "
         >
 
             {/* Header */}
@@ -99,7 +161,7 @@ export default function MatterCard({  matter }) {
 
                     <Folder
                         size={20}
-                        className="mt-0.5 fill-[#EAB308] text-[#EAB308]"
+                        className="mt-0.5 fill-[#007AFF] text-[#007AFF]"
                     />
 
                     <div className="flex-1">
@@ -188,7 +250,9 @@ export default function MatterCard({  matter }) {
 
                 <p className="text-sm font-medium text-slate-800">
 
-                    {dayjs(matter.nextHearing).format("DD MMM YYYY")}
+                    {matter.nextHearing && dayjs(matter.nextHearing).isValid()
+                        ? dayjs(matter.nextHearing).format("DD MMM YYYY")
+                        : "No hearing scheduled"}
 
                 </p>
 
@@ -217,7 +281,8 @@ export default function MatterCard({  matter }) {
 
                     <div  ref={menuRef} className="relative">
                         <button
-                            onClick={() => loadUnlistedConversations(matter.id)}
+                            onClick={() => loadUnlistedConversations()}
+                            aria-label={`Actions for ${matter.title}`}
                             className="rounded-md border border-slate-200 p-2 hover:bg-slate-50 "
                         >
                             <MoreHorizontal size={15}/>
@@ -245,13 +310,18 @@ export default function MatterCard({  matter }) {
                                     duration: 0.15,
                                     ease: "easeOut"
                                 }}
-                                className="absolute right-0 top-10 w-56 text-sm text-slate-500 rounded-xl border border-[#ECECEC] bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+                                className="popover-panel right-0 top-10 w-56 text-sm text-slate-600"
                             >
-                                <button className="w-full px-4 py-3 text-left hover:bg-slate-50">
+                                {menuError && <p role="alert" className="px-4 py-2 text-xs text-red-600">{menuError}</p>}
+                                <button disabled={actionBusy} onClick={() => void renameMatter()} className="w-full px-4 py-3 text-left hover:bg-slate-50 disabled:opacity-50">
                                     Rename
                                 </button>
 
-                                <button className="w-full px-4 py-3 text-left hover:bg-slate-50">
+                                <button disabled={actionBusy} onClick={() => void toggleArchive()} className="w-full px-4 py-3 text-left hover:bg-slate-50 disabled:opacity-50">
+                                    {matter.status === "archived" ? "Restore" : "Archive"}
+                                </button>
+
+                                <button disabled={actionBusy} onClick={() => void deleteMatter()} className="w-full px-4 py-3 text-left text-rose-600 hover:bg-rose-50 disabled:opacity-50">
                                     Delete
                                 </button>
 
@@ -265,7 +335,7 @@ export default function MatterCard({  matter }) {
                                     onMouseLeave={() => setShowSubmenu(false)}
                                 >
 
-                                    <button className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50">
+                                    <button type="button" aria-expanded={showSubmenu} onClick={() => setShowSubmenu((value) => !value)} className="flex w-full items-center justify-between px-4 py-3 hover:bg-slate-50">
                                         <span>Link Conversation</span>
                                         ▶
                                     </button>
@@ -312,11 +382,13 @@ export default function MatterCard({  matter }) {
                                                 `}
                                             >
 
-                                                {availableConversation?.map(conversation => (
+                                                    {(availableConversation || []).map(conversation => (
 
                                                     <button
                                                         key={conversation.id}
-                                                        className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50"
+                                                        onClick={() => void linkConversation(conversation)}
+                                                        disabled={actionBusy}
+                                                        className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left hover:bg-slate-50 disabled:opacity-50"
                                                     >
 
                                                         <div>
@@ -340,6 +412,7 @@ export default function MatterCard({  matter }) {
                                                     </button>
 
                                                 ))}
+                                                {availableConversation?.length === 0 && <p className="px-4 py-3 text-xs text-slate-500">No unlinked conversations.</p>}
 
                                             </motion.div>
 

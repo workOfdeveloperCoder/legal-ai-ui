@@ -87,11 +87,11 @@ export default function DocumentSourcePanel({
   const filename = document?.filename || source.filename;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="liquid-modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
         role="dialog"
         aria-modal="true"
-        className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+        className="liquid-modal-panel flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-[22px]"
       >
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-5 py-4">
           <div className="min-w-0">

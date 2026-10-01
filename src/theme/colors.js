@@ -1,15 +1,15 @@
 const colors = {
   // Brand
-  primary: "#5B5CEB",
-  primaryHover: "#4B4DE0",
-  primaryPressed: "#4041D0",
+  primary: "#007AFF",
+  primaryHover: "#006DE5",
+  primaryPressed: "#005FCC",
 
-  secondary: "#7C83FD",
+  secondary: "#5BA8FF",
 
   // Backgrounds
-  background: "#F7F8FC",
-  surface: "#FFFFFF",
-  sidebar: "#FFFFFF",
+  background: "#F2F5FC",
+  surface: "rgba(255,255,255,0.76)",
+  sidebar: "rgba(247,249,255,0.78)",
   header: "rgba(255,255,255,0.75)",
 
   // Borders
@@ -24,17 +24,17 @@ const colors = {
   disabled: "#CBD5E1",
 
   // Sidebar
-  sidebarActive: "#EEF2FF",
-  sidebarHover: "#F6F7FF",
-  sidebarIcon: "#4F46E5",
+  sidebarActive: "#EAF3FF",
+  sidebarHover: "#F2F7FF",
+  sidebarIcon: "#007AFF",
 
   // Messages
-  aiMessage: "#FFFFFF",
-  userMessage: "#5B5CEB",
+  aiMessage: "rgba(255,255,255,0.82)",
+  userMessage: "#007AFF",
 
   // Buttons
-  button: "#5B5CEB",
-  buttonHover: "#4B4DE0",
+  button: "#007AFF",
+  buttonHover: "#006DE5",
 
   // Status
   success: "#22C55E",

@@ -122,6 +122,7 @@ export default function ChatArea({
 
     const quickAction = sendOptions.quickAction || null;
     const webSearch = Boolean(sendOptions.webSearch);
+    const model = sendOptions.model || null;
     const forcedDocumentId = isUuid(sendOptions.documentId)
       ? sendOptions.documentId
       : null;
@@ -278,6 +279,7 @@ export default function ChatArea({
         documentId: primaryDocumentId,
         quickAction,
         webSearch,
+        model,
         signal: controller.signal,
         onEvent: ({ detail }) => applyStreamDetail(detail),
       });

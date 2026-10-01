@@ -34,7 +34,7 @@ export default function QuickActions({ data }) {
   return (
     <div className="grid">
       <h2 className="py-2 text-lg font-semibold">Quick Actions</h2>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {(data || []).map((action) => {
           const Icon = Icons[action.icon] || Icons.Sparkles;
 
@@ -43,16 +43,16 @@ export default function QuickActions({ data }) {
               key={action.id || action.slug || action.title}
               type="button"
               onClick={() => handleClick(action)}
-              className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              className="quick-action-card group rounded-[18px] border p-5 text-left shadow-[0_1px_2px_rgba(0,0,0,.025)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_28px_rgba(31,41,55,.10)]"
             >
               <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 max-[999px]:hidden items-center justify-center rounded-xl bg-yellow-50">
-                  <Icon size={32} className="text-yellow-500" />
+                <div className="quick-action-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl max-[999px]:hidden">
+                  <Icon size={20} strokeWidth={1.8} />
                 </div>
 
                 <div className="ml-2 flex-1 text-left">
-                  <p className="font-semibold text-slate-900">{action.title}</p>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="text-[13px] font-semibold text-[#1D1D1F]">{action.title}</p>
+                  <p className="mt-1 text-[12px] leading-5 text-[#6E6E73]">
                     {action.description}
                   </p>
                 </div>

@@ -11,7 +11,7 @@ import MatterCard from "./MatterCard";
 import { matterService } from "../../services/matterService";
 import SubHeader from "../layout/SubHeader";
 
-export default function Matters({setActivePage }) {
+export default function Matters() {
 
     const [matters, setMatters] = useState([]);
 
@@ -19,6 +19,7 @@ export default function Matters({setActivePage }) {
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [error, setError] = useState("");
+    const [notice, setNotice] = useState("");
 
     useEffect(() => {
 
@@ -46,7 +47,7 @@ export default function Matters({setActivePage }) {
 
     return (
 
-        <div className="flex h-full flex-col bg-background">
+        <div className="matter-page-glass flex h-full flex-col">
 
             {/* Header */}
             <SubHeader title="Matters" description=" Organize legal conversations into matters." 
@@ -66,7 +67,7 @@ export default function Matters({setActivePage }) {
                             damping: 25,
                         }}
                         onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 rounded-xl bg-yellow px-5 py-3 text-sm font-medium text-gray hover:bg-yellow-600"
+                        className="primary-action flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-medium"
                     >
                         <Plus size={18} />
                         New Matter
@@ -85,6 +86,7 @@ export default function Matters({setActivePage }) {
                             {error}
                         </div>
                     )}
+                    {notice && <p className="col-span-full rounded-xl border border-blue-200/70 bg-blue-50/70 px-4 py-3 text-sm text-blue-800">{notice}</p>}
 
                     {loading &&
                         [...Array(6)].map((_, i) => (
@@ -123,7 +125,7 @@ export default function Matters({setActivePage }) {
                                 }}
                                 className="max-[1300px]:pb-5"
                             >
-                                <MatterCard matter={matter} />
+                                <MatterCard matter={matter} onMatterChanged={loadMatters} />
                             </motion.div>
                         ))}
 
@@ -135,7 +137,8 @@ export default function Matters({setActivePage }) {
             <AddMatterModal
                 open={showAddModal}
                 onClose={() => setShowAddModal(false)}
-                onCreated={() => {
+                onCreated={(created) => {
+                    setNotice(created?.warning || "");
                     loadMatters();
                     setShowAddModal(false);
                 }}

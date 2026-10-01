@@ -6,7 +6,7 @@ export default function MyMatters({ matters }) {
     const navigate = useNavigate();
 
     return (
-        <div className="h-full min-h-0 flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="dashboard-panel matters-panel h-full min-h-0 flex flex-col rounded-3xl border p-6 shadow-sm">
 
             {/* Header */}
             <div className="flex items-center justify-between shrink-0">
@@ -20,7 +20,7 @@ export default function MyMatters({ matters }) {
                 <button
                     type="button"
                     onClick={() => navigate("/matters")}
-                    className="rounded-xl text-yellow-500 text-sm p-3"
+                    className="rounded-xl p-3 text-sm text-[#007AFF] hover:bg-[#EAF3FF]"
                 >
                    View All Matters
                 </button>
@@ -49,7 +49,7 @@ export default function MyMatters({ matters }) {
                             <Folder
                                 size={22}
                                 fill="currentColor"
-                                className="text-yellow-600 max-[999px]:hidden"
+                                className="text-[#007AFF] max-[999px]:hidden"
                             />
 
                             <div className="flex-1 pl-3">

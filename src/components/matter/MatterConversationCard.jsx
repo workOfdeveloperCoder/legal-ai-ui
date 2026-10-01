@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function MatterConversationCard({
     conversation,
-    setActivePage,
+    onClose,
 }) {
 
     const navigate = useNavigate()
@@ -21,7 +21,7 @@ export default function MatterConversationCard({
                 p-5
                 transition-all
                 duration-200
-                hover:border-yellow-400
+                hover:border-[#B8D8FF]
                 hover:shadow-md
                 cursor-pointer
             "
@@ -33,11 +33,11 @@ export default function MatterConversationCard({
 
                 <div className="flex gap-3">
 
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-yellow-50">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EAF3FF]">
 
                         <MessageSquareText
                             size={20}
-                            className="text-yellow-600"
+                            className="text-[#007AFF]"
                         />
 
                     </div>
@@ -62,7 +62,7 @@ export default function MatterConversationCard({
 
                 <ArrowRight
                     size={18}
-                    className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-yellow-600"
+                    className="text-slate-400 transition group-hover:translate-x-1 group-hover:text-[#007AFF]"
                 />
 
             </div>
@@ -71,7 +71,7 @@ export default function MatterConversationCard({
 
             <div className="mt-5 flex flex-wrap gap-2">
 
-                <span className="flex items-center gap-1 rounded-full bg-yellow-50 px-3 py-1 text-xs font-medium text-yellow-700">
+                <span className="flex items-center gap-1 rounded-full bg-[#EAF3FF] px-3 py-1 text-xs font-medium text-[#0056B3]">
 
                     <Scale size={12} />
 
@@ -105,14 +105,14 @@ export default function MatterConversationCard({
                     className="
                         rounded-lg
                         border
-                        border-yellow-300
+                        border-slate-200
                         px-3
                         py-1.5
                         text-xs
                         font-medium
-                        text-yellow-700
+                        text-[#0056B3]
                         transition
-                        hover:bg-yellow-50
+                        hover:bg-[#EAF3FF]
                     "
                 >
                     Open Chat
